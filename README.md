@@ -4,7 +4,11 @@ Nachbau von AZ (Tank Trouble) als Desktop-Spiel in **Rust** (macroquad), mit Mul
 
 Die alte Python-Version (`panzer.py`) liegt noch im Repo, ist aber nicht mehr kompatibel mit der neuen.
 
-## Schnellstart
+## Download
+
+Fertige Installer für Windows, macOS und Linux gibt es auf der [Website](https://martinkopoky-wq.github.io/panzergame/) und unter [Releases](https://github.com/martinkopoky-wq/panzergame/releases). Installiert wird der Launcher, er lädt das Spiel beim ersten Start und hält es aktuell. Die Installer sind nicht signiert, Windows und macOS warnen deshalb beim ersten Start (Anleitung auf der Website).
+
+## Aus dem Quellcode starten
 
 Einfach das Startskript für dein System ausführen. Beim ersten Mal installiert es, was fehlt (Rust, unter Linux ein paar Bibliotheken, unter Windows die C++-Build-Tools), fragt vorher nach und baut das Spiel. Das dauert einmalig ein paar Minuten, danach startet es in Sekunden. Am einfachsten das Repo mit `git clone` holen, dann bleiben die Skripte ausführbar.
 
@@ -29,6 +33,9 @@ Hinweise:
 crates/core     Spiellogik, Labyrinth, Physik, Bots, Netzwerkprotokoll (ohne Grafik)
 crates/server   Server: UDP, 60 Ticks/s, Anti-Cheat, Chat, Kick/Bann  -> panzer-server
 crates/client   Spiel mit Grafik, Ton, Menü (hosten startet den Server im Spiel) -> panzer
+crates/launcher Desktop-App: lädt das Spiel aus den GitHub-Releases, prüft es und startet es -> panzer-launcher
+packaging/      Installer: AppImage und .deb, .dmg, Inno Setup
+website/        Download-Seite (statisch, ohne Build-Schritt)
 scripts/        gemeinsame Vorbereitung der Startskripte (setup.sh, setup.bat)
 start.*, server_start.*   Startskripte für Linux (.sh), macOS (.command) und Windows (.bat)
 ```
@@ -52,6 +59,18 @@ cargo test --release
 ```
 
 Bot-Matches mit 2–8 Spielern und ständig zufälligen Power-ups, verlustfreie Delta-Snapshots, und ein echter Server über UDP mit Test-Clients (Warteschlange, Chat, Kick/Bann, Speedhack-Bremse).
+
+## Release
+
+1. Version in `Cargo.toml` hochzählen (`[workspace.package]`), danach `cargo check` für die `Cargo.lock`.
+2. `RELEASE_NOTES.md` schreiben. Der Text erscheint im Launcher unter den Neuigkeiten.
+3. Committen, nach `main` bringen und den Tag pushen: `git tag v2.0.1 && git push origin v2.0.1`.
+
+Der Workflow `release.yml` baut dann auf allen Systemen, testet die Pakete und veröffentlicht den Release samt `SHA256SUMS.txt`. Pushes auf andere Branches bauen nur Artefakte zum Prüfen, wenn sich die Pakete ändern. Die Website geht bei jeder Änderung in `website/` auf `main` über `pages.yml` online.
+
+Die Dateinamen der Pakete enthalten absichtlich keine Version, sonst brechen die Links auf der Website (`releases/latest/download/...`).
+
+Linux-Pakete lokal bauen: `packaging/linux/build.sh`, Ergebnis in `dist/`. Symbole neu erzeugen: `cargo test -p panzer --release export_icon -- --ignored` und `python3 packaging/make_icons.py`, für die Website `cargo test -p panzer --release export_items -- --ignored`.
 
 ## Spielen
 

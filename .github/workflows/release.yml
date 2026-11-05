@@ -48,6 +48,32 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  # Lässt sich das Paket auf den Systemen installieren, die die Website nennt?
+  linux-install:
+    needs: linux
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu:22.04", "ubuntu:24.04", "debian:12", "debian:13"]
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: linux
+          path: dist
+      - name: Paket installieren und Bibliotheken prüfen
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq unzip ./dist/panzer-launcher_amd64.deb
+          test -x /usr/bin/panzer-launcher
+          test -f /usr/share/applications/panzer-launcher.desktop
+          unzip -q dist/panzer-game-linux-x86_64.zip -d /tmp/game
+          for bin in /usr/bin/panzer-launcher /tmp/game/panzer; do
+            ldd "$bin"
+            ! ldd "$bin" | grep -q "not found"
+          done
+
   macos:
     runs-on: macos-latest
     steps:
@@ -58,8 +84,19 @@ jobs:
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
             echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           fi
+      - name: Tests
+        run: cargo test --release --workspace --locked
       - name: Pakete bauen
         run: packaging/macos/build.sh
+      - name: Disk-Image prüfen
+        run: |
+          hdiutil attach dist/Panzer-macos-universal.dmg -nobrowse -mountpoint /tmp/panzer-dmg
+          launcher=/tmp/panzer-dmg/Panzer.app/Contents/MacOS/panzer-launcher
+          test -x "$launcher"
+          test -L /tmp/panzer-dmg/Applications
+          lipo "$launcher" -verify_arch x86_64 arm64
+          codesign --verify --deep --strict /tmp/panzer-dmg/Panzer.app
+          hdiutil detach /tmp/panzer-dmg
       - name: Startet der Server auf diesem Rechner?
         run: |
           unzip -q -o dist/panzer-server-macos-universal.zip -d target/smoke
@@ -79,8 +116,31 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Inno Setup
         run: choco install innosetup --no-progress -y
+      - name: Tests
+        run: cargo test --release --workspace --locked
       - name: Pakete bauen
         run: packaging\windows\build.ps1
+      - name: Installer und Deinstallation prüfen
+        run: |
+          $setup = Start-Process dist\Panzer-Setup-windows-x86_64.exe -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw "Setup: Exit-Code $($setup.ExitCode)" }
+          $dir = "$env:LOCALAPPDATA\Programs\Panzer"
+          if (-not (Test-Path "$dir\panzer-launcher.exe")) { throw "Launcher fehlt" }
+          if (-not (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Panzer.lnk")) { throw "Startmenü-Eintrag fehlt" }
+          # So sieht der Datenordner aus, wenn der Launcher das Spiel geladen hat
+          New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\Panzer\game" | Out-Null
+          $remove = Start-Process "$dir\unins000.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          if ($remove.ExitCode -ne 0) { throw "Deinstallation: Exit-Code $($remove.ExitCode)" }
+          Start-Sleep -Seconds 5  # die Deinstallation läuft als Kopie im Temp-Ordner weiter
+          if (Test-Path "$dir\panzer-launcher.exe") { throw "Launcher noch da" }
+          if (Test-Path "$env:LOCALAPPDATA\Panzer") { throw "Datenordner noch da" }
+      - name: Startet der Server auf diesem Rechner?
+        run: |
+          Expand-Archive dist\panzer-server-windows-x86_64.zip target\smoke -Force
+          $server = Start-Process target\smoke\panzer-server.exe -ArgumentList '--port','5599' -PassThru
+          Start-Sleep -Seconds 2
+          if ($server.HasExited) { throw "Server hat sich beendet" }
+          Stop-Process $server
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows
@@ -89,7 +149,7 @@ jobs:
 
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux, macos, windows]
+    needs: [linux, linux-install, macos, windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write

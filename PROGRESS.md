@@ -75,3 +75,14 @@ Getestet: Bot-Matches 2–8 Spieler je 120 s mit ständig zufälligen Power-ups 
 Getestet: alle Shell-Skripte mit `bash -n`, `server_start.sh` gebaut und gestartet (Server lief mit 2 Bots), die Paketerkennung von `start.sh` unter Debian (findet das fehlende `libasound2-dev`). **Nicht getestet:** macOS und die .bat-Dateien (kein Mac/Windows hier).
 
 **Offen:** Start auf einem echten Mac und unter Windows ausprobieren (vor allem die winget-Installation der Build-Tools).
+
+## 2026-11-05: Launcher, Release-Pipeline, Download-Website
+**Gemacht:** `crates/launcher` (egui): holt das neueste GitHub-Release, lädt das Spielpaket, prüft SHA-256 (fehlende Prüfsummen sind jetzt ein Fehler), entpackt und startet. Installer in `packaging/`: AppImage und .deb (gebaut auf Ubuntu 22.04, höchstens glibc 2.35), `.dmg` mit `Panzer.app` als Universal-Binary (nur ad hoc signiert), Inno-Setup-Installer ohne Admin-Rechte. `release.yml`: Tag `v*` baut, testet und veröffentlicht, andere Pushes liefern nur Artefakte. Werkzeuge und Actions sind auf feste Versionen bzw. Commits gepinnt. Website in `website/` (statisch, gleiche Farben und Schriften wie der Launcher, echte Screenshots, alle 59 Symbole aus dem Spiel über den Test `export_items`), `pages.yml` veröffentlicht sie von `main`. Release-Binaries gestrippt (Launcher 15 auf 6 MB).
+
+Getestet: Testsuite auf Linux, Windows und macOS in CI, .deb per `apt` auf Ubuntu 22.04/24.04 und Debian 12/13, Windows-Installer still installieren und wieder entfernen, Disk-Image mounten und Signatur prüfen, Server startet auf allen drei Systemen. Launcher unter Linux gegen einen lokalen Fake-Release in allen Zuständen, Website headless in 4 Größen, ohne JS und mit reduzierter Bewegung.
+
+**Nicht getestet:** Launcher und Spiel mit Fenster unter Windows und macOS (die CI-Rechner haben keine GPU). Der Ablauf über die Knöpfe lief unter Linux nur mit simulierten Klicks und einmal komplett bis zum Spielstart.
+
+**Offen:** Erster echter Release und Website-Start. Keine `LICENSE`-Datei im Repo, obwohl `Cargo.toml` MIT sagt. Der Launcher aktualisiert sich nicht selbst, nur das Spiel.
+
+**Gelernt:** Roboto hat kein `→`, egui zeichnet dann ein Kästchen. macroquads `export_png` spiegelt vertikal. `hyprctl dispatch sendshortcut` mit `mouse:272` klickt, ist aber auf dem benutzten Desktop unzuverlässig: Wechselt jemand den Workspace, treffen Klick und `grim` etwas anderes. Fenstertests deshalb nur ohne Klick, ohne Fokus und nach Prüfung des sichtbaren Workspaces, Websites headless. `.btn { display: inline-flex }` überschreibt das `hidden`-Attribut.

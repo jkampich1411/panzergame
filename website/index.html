@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panzer: Labyrinth-Panzerschlacht für bis zu 8 Spieler</title>
+  <meta name="description" content="Bis zu 8 Spieler über LAN und Internet, Bots, 59 Power-ups und jede Runde ein neues Labyrinth. Kostenlos für Windows, macOS und Linux.">
+  <meta name="theme-color" content="#0d0e12">
+  <link rel="icon" type="image/png" href="img/favicon.png">
+  <link rel="apple-touch-icon" href="img/icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://martinkopoky-wq.github.io/panzergame/">
+  <meta property="og:title" content="Panzer: Labyrinth-Panzerschlacht für bis zu 8 Spieler">
+  <meta property="og:description" content="Bis zu 8 Spieler über LAN und Internet, Bots, 59 Power-ups und jede Runde ein neues Labyrinth.">
+  <meta property="og:image" content="https://martinkopoky-wq.github.io/panzergame/img/hero.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preload" href="fonts/RobotoCondensed-Bold.woff" as="font" type="font/woff" crossorigin>
+  <link rel="preload" href="img/hero.jpg" as="image">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <!-- Symbole: Phosphor Icons (MIT), https://phosphoricons.com -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="windows-logo" viewBox="0 0 256 256"><path d="M208,136H128a8,8,0,0,0-8,8v57.45a8,8,0,0,0,6.57,7.88l80,14.54A7.61,7.61,0,0,0,208,224a8,8,0,0,0,8-8V144A8,8,0,0,0,208,136Zm-8,70.41-64-11.63V152h64ZM96,136H32a8,8,0,0,0-8,8v40a8,8,0,0,0,6.57,7.87l64,11.64a8.54,8.54,0,0,0,1.43.13,8,8,0,0,0,8-8V144A8,8,0,0,0,96,136Zm-8,50.05-48-8.73V152H88ZM213.13,33.86a8,8,0,0,0-6.56-1.73l-80,14.55A8,8,0,0,0,120,54.55V112a8,8,0,0,0,8,8h80a8,8,0,0,0,8-8V40A8,8,0,0,0,213.13,33.86ZM200,104H136V61.22l64-11.63ZM101.13,54.22a8,8,0,0,0-6.56-1.73l-64,11.64A8,8,0,0,0,24,72v40a8,8,0,0,0,8,8H96a8,8,0,0,0,8-8V60.36A8,8,0,0,0,101.13,54.22ZM88,104H40V78.68L88,70Z"/></symbol>
+    <symbol id="apple-logo" viewBox="0 0 256 256"><path d="M223.3,169.59a8.07,8.07,0,0,0-2.8-3.4C203.53,154.53,200,134.64,200,120c0-17.67,13.47-33.06,21.5-40.67a8,8,0,0,0,0-11.62C208.82,55.74,187.82,48,168,48a72.2,72.2,0,0,0-40,12.13,71.56,71.56,0,0,0-90.71,9.09A74.63,74.63,0,0,0,16,123.4a127.06,127.06,0,0,0,40.14,89.73A39.8,39.8,0,0,0,83.59,224h87.68a39.84,39.84,0,0,0,29.12-12.57,125,125,0,0,0,17.82-24.6C225.23,174,224.33,172,223.3,169.59Zm-34.63,30.94a23.76,23.76,0,0,1-17.4,7.47H83.59a23.82,23.82,0,0,1-16.44-6.51A111.14,111.14,0,0,1,32,123,58.5,58.5,0,0,1,48.65,80.47,54.81,54.81,0,0,1,88,64h.78A55.45,55.45,0,0,1,123,76.28a8,8,0,0,0,10,0A55.44,55.44,0,0,1,168,64a70.64,70.64,0,0,1,36,10.35c-13,14.52-20,30.47-20,45.65,0,23.77,7.64,42.73,22.18,55.3A105.82,105.82,0,0,1,188.67,200.53ZM128.23,30A40,40,0,0,1,167,0h1a8,8,0,0,1,0,16h-1a24,24,0,0,0-23.24,18,8,8,0,1,1-15.5-4Z"/></symbol>
+    <symbol id="linux-logo" viewBox="0 0 256 256"><path d="M229,214.25A8,8,0,0,1,217.76,213C216.39,211.27,184,169.86,184,88A56,56,0,0,0,72,88c0,81.86-32.37,123.27-33.75,125a8,8,0,0,1-12.51-10c.15-.2,7.69-9.9,15.13-28.74C47.77,156.8,56,127.64,56,88a72,72,0,0,1,144,0c0,39.64,8.23,68.8,15.13,86.28,7.48,18.94,15.06,28.64,15.14,28.74A8,8,0,0,1,229,214.25ZM100,88a12,12,0,1,0,12,12A12,12,0,0,0,100,88Zm68,12a12,12,0,1,0-12,12A12,12,0,0,0,168,100ZM99.58,128.84a8,8,0,0,0-7.15,14.31l32,16a7.94,7.94,0,0,0,7.15,0l32-16a8,8,0,0,0-7.16-14.31L128,143.05ZM128,176a54.07,54.07,0,0,0-47,28.11,8,8,0,1,0,14,7.78,37.35,37.35,0,0,1,66,0,8,8,0,0,0,14-7.78A54.07,54.07,0,0,0,128,176Z"/></symbol>
+    <symbol id="github-logo" viewBox="0 0 256 256"><path d="M208.31,75.68A59.78,59.78,0,0,0,202.93,28,8,8,0,0,0,196,24a59.75,59.75,0,0,0-48,24H124A59.75,59.75,0,0,0,76,24a8,8,0,0,0-6.93,4,59.78,59.78,0,0,0-5.38,47.68A58.14,58.14,0,0,0,56,104v8a56.06,56.06,0,0,0,48.44,55.47A39.8,39.8,0,0,0,96,192v8H72a24,24,0,0,1-24-24A40,40,0,0,0,8,136a8,8,0,0,0,0,16,24,24,0,0,1,24,24,40,40,0,0,0,40,40H96v16a8,8,0,0,0,16,0V192a24,24,0,0,1,48,0v40a8,8,0,0,0,16,0V192a39.8,39.8,0,0,0-8.44-24.53A56.06,56.06,0,0,0,216,112v-8A58.14,58.14,0,0,0,208.31,75.68ZM200,112a40,40,0,0,1-40,40H112a40,40,0,0,1-40-40v-8a41.74,41.74,0,0,1,6.9-22.48A8,8,0,0,0,80,73.83a43.81,43.81,0,0,1,.79-33.58,43.88,43.88,0,0,1,32.32,20.06A8,8,0,0,0,119.82,64h32.35a8,8,0,0,0,6.74-3.69,43.87,43.87,0,0,1,32.32-20.06A43.81,43.81,0,0,1,192,73.83a8.09,8.09,0,0,0,1,7.65A41.72,41.72,0,0,1,200,104Z"/></symbol>
+    <symbol id="download-simple" viewBox="0 0 256 256"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"/></symbol>
+  </svg>
+
+  <header class="bar">
+    <div class="wrap">
+      <a class="brand" href="#top"><img src="img/favicon.png" alt="" width="28" height="28">PANZER</a>
+      <nav aria-label="Hauptnavigation">
+        <a href="#spiel">Spiel</a>
+        <a href="#server">Server</a>
+        <a href="https://github.com/martinkopoky-wq/panzergame">GitHub</a>
+        <a class="btn btn-primary" href="#download">Herunterladen</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <img class="hero-art" src="img/hero.jpg" width="824" height="490" fetchpriority="high"
+        alt="Spielszene in der Vulkan-Arena: drei Panzer kämpfen zwischen glühenden Rissen, Banner mit Erstes Blut.">
+      <div class="wrap hero-copy">
+        <p class="label">Labyrinth-Panzerschlacht</p>
+        <h1>PANZER</h1>
+        <p class="lead">Bis zu 8 Spieler über LAN und Internet, Bots, 59 Power-ups und jede Runde ein neues Labyrinth.</p>
+        <div class="actions">
+          <a class="btn btn-primary btn-large" id="hero-download" href="#download"><svg class="icon" aria-hidden="true"><use href="#download-simple"></use></svg><span>Herunterladen</span></a>
+          <a class="btn btn-large" id="hero-other" href="#download">Andere Systeme</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="spiel">
+      <div class="wrap">
+        <h2 class="reveal">Kein Match läuft zweimal gleich.</h2>
+        <div class="bento">
+          <figure class="cell reveal">
+            <div class="shot"><img src="img/acht-spieler.jpg" width="1000" height="680" loading="lazy"
+              alt="Großes Labyrinth mit acht Spielern, Banner: Orange gewinnt die Runde."></div>
+            <figcaption>
+              <h3>Bis zu 8 Spieler</h3>
+              <p>Ab 5 Spielern wächst das Labyrinth mit. An einer Tastatur spielen 2 bis 4.</p>
+            </figcaption>
+          </figure>
+          <figure class="cell reveal">
+            <div class="shot"><img src="img/stromausfall.jpg" width="1000" height="680" loading="lazy"
+              alt="Sonderregel Stromausfall: dunkles Labyrinth, nur die Scheinwerfer der Panzer leuchten."></div>
+            <figcaption>
+              <h3>Sonderregeln</h3>
+              <p>Stromausfall, Nebel, Scharfschützen, Kistenregen: Manche Runden spielen sich ganz anders.</p>
+            </figcaption>
+          </figure>
+          <figure class="cell reveal">
+            <div class="shot"><img src="img/dschungel.jpg" width="1000" height="680" loading="lazy"
+              alt="Rundenstart in der Dschungel-Arena mit vier Panzern."></div>
+            <figcaption>
+              <h3>6 Arenen</h3>
+              <p>Nachtbasis, Wüste, Vulkan, Gletscher, Dschungel und Neon-City.</p>
+            </figcaption>
+          </figure>
+          <figure class="cell reveal">
+            <div class="shot"><img src="img/rundenstart.jpg" width="1000" height="680" loading="lazy"
+              alt="Rundenstart in der Nachtbasis: ein Spieler gegen drei Bots."></div>
+            <figcaption>
+              <h3>Bots</h3>
+              <p>Zum Üben oder für freie Plätze: Bots schießen über Banden und weichen Kugeln aus.</p>
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="powerups" aria-labelledby="powerups-title">
+      <div class="wrap">
+        <h2 id="powerups-title" class="reveal">59 Power-ups</h2>
+        <p class="intro reveal">Von der Railgun über die Bärenfalle bis zum Schwarzen Loch. Die Atombombe gibt es nur aus der Wundertüte.</p>
+      </div>
+      <div class="marquee">
+        <ul class="items">
+          <li><span class="ico" style="--x:0;--y:0"></span>Splitterbombe</li>
+          <li><span class="ico" style="--x:1;--y:0"></span>MG</li>
+          <li><span class="ico" style="--x:2;--y:0"></span>Laser</li>
+          <li><span class="ico" style="--x:3;--y:0"></span>Lenkrakete</li>
+          <li><span class="ico" style="--x:4;--y:0"></span>Schrotflinte</li>
+          <li><span class="ico" style="--x:5;--y:0"></span>Flummi</li>
+          <li><span class="ico" style="--x:6;--y:0"></span>Minen</li>
+          <li><span class="ico" style="--x:7;--y:0"></span>Tauschkugel</li>
+          <li><span class="ico" style="--x:8;--y:0"></span>Bumerang</li>
+          <li><span class="ico" style="--x:9;--y:0"></span>Eisstrahl</li>
+          <li><span class="ico" style="--x:0;--y:1"></span>Schwarzes Loch</li>
+          <li><span class="ico" style="--x:1;--y:1"></span>Luftschlag</li>
+          <li><span class="ico" style="--x:2;--y:1"></span>Flammenwerfer</li>
+          <li><span class="ico" style="--x:3;--y:1"></span>Blitz</li>
+          <li><span class="ico" style="--x:4;--y:1"></span>Railgun</li>
+          <li><span class="ico" style="--x:5;--y:1"></span>Fernlenkrakete</li>
+          <li><span class="ico" style="--x:6;--y:1"></span>Geschützturm</li>
+          <li><span class="ico" style="--x:7;--y:1"></span>Wandbauer</li>
+          <li><span class="ico" style="--x:8;--y:1"></span>Ölfass</li>
+          <li><span class="ico" style="--x:9;--y:1"></span>Klebebombe</li>
+          <li><span class="ico" style="--x:0;--y:2"></span>Granatwerfer</li>
+          <li><span class="ico" style="--x:1;--y:2"></span>Raketenschwarm</li>
+          <li><span class="ico" style="--x:2;--y:2"></span>Sägeblatt</li>
+          <li><span class="ico" style="--x:3;--y:2"></span>Plasmakugel</li>
+          <li><span class="ico" style="--x:4;--y:2"></span>Feuerwerk</li>
+          <li><span class="ico" style="--x:5;--y:2"></span>Druckwelle</li>
+          <li><span class="ico" style="--x:6;--y:2"></span>Spinnenmine</li>
+          <li><span class="ico" style="--x:7;--y:2"></span>Rammbock</li>
+          <li><span class="ico" style="--x:8;--y:2"></span>Kugelring</li>
+          <li><span class="ico" style="--x:9;--y:2"></span>Suchkugel</li>
+          <li><span class="ico" style="--x:0;--y:3"></span>Phasenkugel</li>
+          <li><span class="ico" style="--x:1;--y:3"></span>Kanonenkugel</li>
+          <li><span class="ico" style="--x:2;--y:3"></span>Artillerie</li>
+          <li><span class="ico" style="--x:3;--y:3"></span>Bärenfalle</li>
+          <li><span class="ico" style="--x:4;--y:3"></span>Sprungdüse</li>
+          <li><span class="ico" style="--x:5;--y:3"></span>Frostnova</li>
+          <li><span class="ico" style="--x:6;--y:3"></span>Orbitallaser</li>
+          <li><span class="ico" style="--x:7;--y:3"></span>Prisma</li>
+          <li><span class="ico" style="--x:8;--y:3"></span>Schild</li>
+          <li><span class="ico" style="--x:9;--y:3"></span>Turbo</li>
+          <li><span class="ico" style="--x:0;--y:4"></span>Schrumpfpilz</li>
+          <li><span class="ico" style="--x:1;--y:4"></span>Geist</li>
+          <li><span class="ico" style="--x:2;--y:4"></span>Tarnkappe</li>
+          <li><span class="ico" style="--x:3;--y:4"></span>Verwirrung</li>
+          <li><span class="ico" style="--x:4;--y:4"></span>Spiegelschild</li>
+          <li><span class="ico" style="--x:5;--y:4"></span>Superstern</li>
+          <li><span class="ico" style="--x:6;--y:4"></span>Riesenpilz</li>
+          <li><span class="ico" style="--x:7;--y:4"></span>Schnellfeuer</li>
+          <li><span class="ico" style="--x:8;--y:4"></span>Ersatzteil</li>
+          <li><span class="ico" style="--x:9;--y:4"></span>Lähmung</li>
+          <li><span class="ico" style="--x:0;--y:5"></span>Doppellauf</li>
+          <li><span class="ico" style="--x:1;--y:5"></span>Teleporter</li>
+          <li><span class="ico" style="--x:2;--y:5"></span>Discokugel</li>
+          <li><span class="ico" style="--x:3;--y:5"></span>Radar</li>
+          <li><span class="ico" style="--x:4;--y:5"></span>Atombombe</li>
+          <li><span class="ico" style="--x:5;--y:5"></span>Goldene Kugel</li>
+          <li><span class="ico" style="--x:6;--y:5"></span>Heiße Kartoffel</li>
+          <li><span class="ico" style="--x:7;--y:5"></span>Meteoritenschauer</li>
+          <li><span class="ico" style="--x:8;--y:5"></span>Wundertüte</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="server" id="server">
+      <div class="wrap">
+        <div>
+          <h2 class="reveal">Hosten oder eigener Server.</h2>
+          <p class="intro reveal">Hosten geht direkt im Spielmenü. Für den Homeserver gibt es den Server als eigenes Programm.</p>
+          <dl class="points">
+            <div class="reveal">
+              <dt>Anti-Cheat</dt>
+              <dd>Der Server entscheidet alles. Speedhacks bringen nichts, getarnte Panzer und alles im Nebel werden gar nicht erst verschickt.</dd>
+            </div>
+            <div class="reveal">
+              <dt>Chat, Kick und Bann</dt>
+              <dd>Spielerliste mit Ping, Chat im Spiel und Banns, die auch nach dem Wiederkommen gelten.</dd>
+            </div>
+            <div class="reveal">
+              <dt>Kleine Pakete</dt>
+              <dd>UDP mit typisch 30 bis 100 Byte pro Paket. Wer dazukommt, wartet auf die nächste Runde, statt sie neu zu starten.</dd>
+            </div>
+          </dl>
+        </div>
+        <div class="term reveal">
+          <pre><code><span class="c"># Server mit 2 Bots starten</span>
+./panzer-server --port 5555 --bots 2
+
+<span class="c"># Mit Admin-Passwort, im Spiel dann /login &lt;Passwort&gt;</span>
+./panzer-server --bots 2 --admin-pass geheim</code></pre>
+          <p>Der Server braucht UDP-Port 5555. Deine Freunde wählen im Spiel Beitreten und geben die IP ein.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="download" id="download">
+      <div class="wrap">
+        <div class="download-head">
+          <div>
+            <h2 class="reveal">Herunterladen</h2>
+            <p class="intro reveal">Für Windows, macOS und Linux. Der Launcher installiert das Spiel beim ersten Start und hält es danach aktuell. Kostenlos, ohne Konto.</p>
+            <p class="version" id="version"></p>
+          </div>
+          <img class="reveal" src="img/launcher.jpg" width="1040" height="640" loading="lazy"
+            alt="Der Panzer-Launcher mit Neuigkeiten und dem Knopf zum Installieren.">
+        </div>
+
+        <div class="systems">
+          <article class="system reveal" data-system="windows">
+            <svg class="icon" aria-hidden="true"><use href="#windows-logo"></use></svg>
+            <div>
+              <h3>Windows</h3>
+              <p>Installer ohne Admin-Rechte. Er ist nicht signiert, SmartScreen warnt deshalb: erst „Weitere Informationen“, dann „Trotzdem ausführen“.</p>
+            </div>
+            <div class="get"><a class="btn btn-primary" href="https://github.com/martinkopoky-wq/panzergame/releases/latest/download/Panzer-Setup-windows-x86_64.exe" data-asset="Panzer-Setup-windows-x86_64.exe"><svg class="icon" aria-hidden="true"><use href="#download-simple"></use></svg>Installer <span class="size"></span></a></div>
+          </article>
+          <article class="system reveal" data-system="macos">
+            <svg class="icon" aria-hidden="true"><use href="#apple-logo"></use></svg>
+            <div>
+              <h3>macOS</h3>
+              <p>Für Intel und Apple Silicon, ab macOS 11. Nicht von Apple signiert: Nach dem ersten Startversuch unter Systemeinstellungen, Datenschutz &amp; Sicherheit auf „Dennoch öffnen“ klicken.</p>
+            </div>
+            <div class="get"><a class="btn btn-primary" href="https://github.com/martinkopoky-wq/panzergame/releases/latest/download/Panzer-macos-universal.dmg" data-asset="Panzer-macos-universal.dmg"><svg class="icon" aria-hidden="true"><use href="#download-simple"></use></svg>Disk-Image <span class="size"></span></a></div>
+          </article>
+          <article class="system reveal" data-system="linux">
+            <svg class="icon" aria-hidden="true"><use href="#linux-logo"></use></svg>
+            <div>
+              <h3>Linux</h3>
+              <p>Für Debian 12, Ubuntu 22.04 oder neuer. Die AppImage vor dem Start ausführbar machen, das Paket mit <code>sudo apt install ./panzer-launcher_amd64.deb</code> installieren.</p>
+            </div>
+            <div class="get">
+              <a class="btn btn-primary" href="https://github.com/martinkopoky-wq/panzergame/releases/latest/download/Panzer-linux-x86_64.AppImage" data-asset="Panzer-linux-x86_64.AppImage"><svg class="icon" aria-hidden="true"><use href="#download-simple"></use></svg>AppImage <span class="size"></span></a>
+              <a class="btn" href="https://github.com/martinkopoky-wq/panzergame/releases/latest/download/panzer-launcher_amd64.deb" data-asset="panzer-launcher_amd64.deb"><svg class="icon" aria-hidden="true"><use href="#download-simple"></use></svg>.deb <span class="size"></span></a>
+            </div>
+          </article>
+        </div>
+
+        <div class="more">
+          <span>Nur der Server:
+            <a href="https://github.com/martinkopoky-wq/panzergame/releases/latest/download/panzer-server-windows-x86_64.zip">Windows</a>,
+            <a href="https://github.com/martinkopoky-wq/panzergame/releases/latest/download/panzer-server-macos-universal.zip">macOS</a>,
+            <a href="https://github.com/martinkopoky-wq/panzergame/releases/latest/download/panzer-server-linux-x86_64.tar.gz">Linux</a></span>
+          <a href="https://github.com/martinkopoky-wq/panzergame/releases/latest/download/SHA256SUMS.txt">Prüfsummen</a>
+          <a href="https://github.com/martinkopoky-wq/panzergame/releases">Alle Versionen</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>Panzer ist kostenlos und Open Source.</span>
+      <a href="https://github.com/martinkopoky-wq/panzergame"><svg class="icon" aria-hidden="true"><use href="#github-logo"></use></svg>Quellcode auf GitHub</a>
+    </div>
+  </footer>
+</body>
+</html>

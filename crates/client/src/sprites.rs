@@ -951,4 +951,27 @@ mod tests {
         let img = macroquad::texture::Image { width: 1024, height: 1024, bytes: cv.to_rgba8() };
         img.export_png(&format!("{dir}/panzer-1024.png"));
     }
+
+    /// Erzeugt website/img/items.png: alle Power-up-Symbole als Raster, Reihenfolge wie ALL_ITEMS.
+    /// cargo test -p panzer --release export_items -- --ignored
+    #[test]
+    #[ignore]
+    fn export_items() {
+        use panzer_core::items::{Item, ALL_ITEMS};
+        const CELL: usize = 96;
+        const COLS: usize = 10;
+        // "Eingefroren" ist nur eine Anzeige, kein Power-up
+        let items: Vec<Item> = ALL_ITEMS.iter().copied().filter(|i| *i != Item::Frozen).collect();
+        assert_eq!(items.len(), 59);
+        let rows = items.len().div_ceil(COLS);
+        let mut cv = crate::raster::Canvas::new(CELL * COLS, CELL * rows);
+        for (i, item) in items.iter().enumerate() {
+            let (cx, cy) = ((i % COLS * CELL + CELL / 2) as f32, (i / COLS * CELL + CELL / 2) as f32);
+            super::draw_icon(&mut cv, *item, cx, cy, 3.0);
+        }
+        // export_png spiegelt vertikal, deshalb vorher umdrehen
+        let bytes: Vec<u8> = cv.to_rgba8().chunks(CELL * COLS * 4).rev().flatten().copied().collect();
+        let img = macroquad::texture::Image { width: (CELL * COLS) as u16, height: (CELL * rows) as u16, bytes };
+        img.export_png(concat!(env!("CARGO_MANIFEST_DIR"), "/../../website/img/items.png"));
+    }
 }
