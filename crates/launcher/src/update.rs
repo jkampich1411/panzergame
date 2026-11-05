@@ -76,7 +76,9 @@ pub fn fetch_latest(feed: &str) -> Result<Release, String> {
     let text = match resp {
         Ok(r) => r.into_string().map_err(|e| e.to_string())?,
         Err(ureq::Error::Status(404, _)) => return Err("Es gibt noch kein veröffentlichtes Release.".into()),
-        Err(ureq::Error::Status(403, _)) => return Err("GitHub hat zu viele Anfragen abgelehnt, bitte später nochmal.".into()),
+        Err(ureq::Error::Status(403, _)) => {
+            return Err("GitHub hat zu viele Anfragen abgelehnt, bitte später nochmal.".into())
+        }
         Err(ureq::Error::Status(code, _)) => return Err(format!("Server antwortet mit Fehler {code}.")),
         Err(e) => return Err(format!("Keine Verbindung: {e}")),
     };
@@ -299,7 +301,11 @@ mod tests {
                 let mut out = stream;
                 match files.iter().find(|f| f.0 == path) {
                     Some((_, body)) => {
-                        let _ = write!(out, "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len());
+                        let _ = write!(
+                            out,
+                            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                            body.len()
+                        );
                         let _ = out.write_all(body);
                     }
                     None => {
@@ -332,11 +338,10 @@ mod tests {
         let good = hex(&Sha256::digest(&zip));
         let dir = std::env::temp_dir().join(format!("panzer-launcher-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
-        for (tag, sums) in [("v9.0.0", format!("{good}  {name}\n")), ("v9.0.1", format!("{}  {name}\n", "0".repeat(64)))] {
-            let listener_files = vec![
-                (name.clone(), zip.clone()),
-                (CHECKSUMS.to_string(), sums.clone().into_bytes()),
-            ];
+        for (tag, sums) in
+            [("v9.0.0", format!("{good}  {name}\n")), ("v9.0.1", format!("{}  {name}\n", "0".repeat(64)))]
+        {
+            let listener_files = vec![(name.clone(), zip.clone()), (CHECKSUMS.to_string(), sums.clone().into_bytes())];
             let base = serve(listener_files);
             let feed = format!(
                 r#"{{"tag_name":"{tag}","name":"Test","body":"","published_at":"2026-10-22","assets":[
@@ -367,4 +372,3 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 }
-

@@ -39,7 +39,10 @@ fn data_dir() -> PathBuf {
     } else if cfg!(target_os = "macos") {
         home().join("Library/Application Support/Panzer")
     } else {
-        std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).unwrap_or_else(|| home().join(".local/share")).join("panzer")
+        std::env::var_os("XDG_DATA_HOME")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| home().join(".local/share"))
+            .join("panzer")
     }
 }
 
@@ -93,12 +96,14 @@ impl Launcher {
     fn new(cc: &eframe::CreationContext) -> Launcher {
         let ctx = &cc.egui_ctx;
         let mut fonts = FontDefinitions::default();
-        fonts
-            .font_data
-            .insert("title".into(), Arc::new(FontData::from_static(include_bytes!("../../../assets/fonts/RobotoCondensed-Bold.ttf"))));
-        fonts
-            .font_data
-            .insert("body".into(), Arc::new(FontData::from_static(include_bytes!("../../../assets/fonts/Roboto-Medium.ttf"))));
+        fonts.font_data.insert(
+            "title".into(),
+            Arc::new(FontData::from_static(include_bytes!("../../../assets/fonts/RobotoCondensed-Bold.ttf"))),
+        );
+        fonts.font_data.insert(
+            "body".into(),
+            Arc::new(FontData::from_static(include_bytes!("../../../assets/fonts/Roboto-Medium.ttf"))),
+        );
         fonts.families.insert(FontFamily::Name("title".into()), vec!["title".into()]);
         if let Some(p) = fonts.families.get_mut(&FontFamily::Proportional) {
             p.insert(0, "body".into());
@@ -244,14 +249,34 @@ impl Launcher {
         let mut y = rect.top() + 46.0;
         p.text(Pos2::new(x, y), Align2::LEFT_TOP, "01 / LABYRINTH-PANZERSCHLACHT", FontId::monospace(11.0), DIM);
         y += 26.0;
-        p.text(Pos2::new(x - 3.0, y), Align2::LEFT_TOP, "PANZER", FontId::new(92.0, FontFamily::Name("title".into())), TEXT);
+        p.text(
+            Pos2::new(x - 3.0, y),
+            Align2::LEFT_TOP,
+            "PANZER",
+            FontId::new(92.0, FontFamily::Name("title".into())),
+            TEXT,
+        );
         y += 104.0;
-        for line in ["Bis zu 8 Spieler über LAN und Internet,", "Bots, 59 Power-ups und jede Runde ein neues Labyrinth."] {
-            p.text(Pos2::new(x, y), Align2::LEFT_TOP, line, FontId::proportional(16.0), Color32::from_rgb(200, 205, 216));
+        for line in
+            ["Bis zu 8 Spieler über LAN und Internet,", "Bots, 59 Power-ups und jede Runde ein neues Labyrinth."]
+        {
+            p.text(
+                Pos2::new(x, y),
+                Align2::LEFT_TOP,
+                line,
+                FontId::proportional(16.0),
+                Color32::from_rgb(200, 205, 216),
+            );
             y += 22.0;
         }
         y += 14.0;
-        p.text(Pos2::new(x, y), Align2::LEFT_TOP, "WINDOWS · MACOS · LINUX · KOSTENLOS · OPEN SOURCE", FontId::monospace(11.0), DIM);
+        p.text(
+            Pos2::new(x, y),
+            Align2::LEFT_TOP,
+            "WINDOWS · MACOS · LINUX · KOSTENLOS · OPEN SOURCE",
+            FontId::monospace(11.0),
+            DIM,
+        );
     }
 
     fn news(&self, ui: &mut egui::Ui, release: Option<&Release>, offline: Option<&str>) {
@@ -288,11 +313,12 @@ impl Launcher {
 fn big_button(ui: &mut egui::Ui, text: &str, filled: bool, enabled: bool) -> bool {
     let (fill, color) = if filled { (ACCENT, Color32::from_rgb(20, 18, 10)) } else { (Color32::TRANSPARENT, TEXT) };
     let color = if enabled { color } else { DIM };
-    let button = egui::Button::new(RichText::new(text).size(20.0).color(color).family(FontFamily::Name("title".into())))
-        .fill(if enabled { fill } else { LINE })
-        .stroke(Stroke::new(1.0, if filled { ACCENT } else { LINE }))
-        .corner_radius(CornerRadius::same(2))
-        .min_size(Vec2::new(220.0, 54.0));
+    let button =
+        egui::Button::new(RichText::new(text).size(20.0).color(color).family(FontFamily::Name("title".into())))
+            .fill(if enabled { fill } else { LINE })
+            .stroke(Stroke::new(1.0, if filled { ACCENT } else { LINE }))
+            .corner_radius(CornerRadius::same(2))
+            .min_size(Vec2::new(220.0, 54.0));
     ui.add_enabled(enabled, button).clicked()
 }
 
@@ -337,7 +363,9 @@ impl eframe::App for Launcher {
                     ui.label(RichText::new("PANZER").size(18.0).color(TEXT).family(FontFamily::Name("title".into())));
                     ui.label(RichText::new("LAUNCHER").monospace().size(11.0).color(DIM));
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        ui.label(RichText::new(format!("v{}", env!("CARGO_PKG_VERSION"))).monospace().size(11.0).color(DIM));
+                        ui.label(
+                            RichText::new(format!("v{}", env!("CARGO_PKG_VERSION"))).monospace().size(11.0).color(DIM),
+                        );
                         if small_button(ui, "GITHUB") {
                             open(GITHUB);
                         }
@@ -350,7 +378,9 @@ impl eframe::App for Launcher {
 
         egui::Panel::bottom("actions")
             .exact_size(104.0)
-            .frame(egui::Frame::new().fill(PANEL).inner_margin(Margin::symmetric(28, 16)).stroke(Stroke::new(1.0, LINE)))
+            .frame(
+                egui::Frame::new().fill(PANEL).inner_margin(Margin::symmetric(28, 16)).stroke(Stroke::new(1.0, LINE)),
+            )
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.vertical(|ui| {
@@ -360,13 +390,27 @@ impl eframe::App for Launcher {
                             (Phase::Checking, _) => ("Suche nach Updates …".to_string(), DIM),
                             (Phase::Downloading, _) => {
                                 let (d, t) = progress;
-                                (format!("Lade {} herunter … {} / {}", release.as_ref().map_or("", |r| r.tag.as_str()), human(d), human(t)), TEXT)
+                                (
+                                    format!(
+                                        "Lade {} herunter … {} / {}",
+                                        release.as_ref().map_or("", |r| r.tag.as_str()),
+                                        human(d),
+                                        human(t)
+                                    ),
+                                    TEXT,
+                                )
                             }
                             (Phase::Idle, None) => match (&installed, &release, &offline) {
-                                (Some(i), Some(r), _) if r.tag == i.version => (format!("Bereit · {} ist aktuell", i.version), TEXT),
-                                (Some(i), Some(r), _) => (format!("Update verfügbar: {} auf {}", i.version, r.tag), ACCENT),
+                                (Some(i), Some(r), _) if r.tag == i.version => {
+                                    (format!("Bereit · {} ist aktuell", i.version), TEXT)
+                                }
+                                (Some(i), Some(r), _) => {
+                                    (format!("Update verfügbar: {} auf {}", i.version, r.tag), ACCENT)
+                                }
                                 (None, Some(r), _) => {
-                                    let size = r.asset(&update::platform_asset()).map_or(String::new(), |a| format!(" ({})", human(a.size)));
+                                    let size = r
+                                        .asset(&update::platform_asset())
+                                        .map_or(String::new(), |a| format!(" ({})", human(a.size)));
                                     (format!("Noch nicht installiert · {}{size}", r.tag), TEXT)
                                 }
                                 (Some(i), None, _) => (format!("Offline · installiert ist {}", i.version), DIM),
@@ -383,7 +427,12 @@ impl eframe::App for Launcher {
                         if phase == Phase::Downloading {
                             let (d, t) = progress;
                             let f = if t > 0 { d as f32 / t as f32 } else { 0.0 };
-                            ui.add(egui::ProgressBar::new(f).desired_height(8.0).fill(ACCENT).corner_radius(CornerRadius::same(1)));
+                            ui.add(
+                                egui::ProgressBar::new(f)
+                                    .desired_height(8.0)
+                                    .fill(ACCENT)
+                                    .corner_radius(CornerRadius::same(1)),
+                            );
                         } else {
                             ui.horizontal(|ui| {
                                 let busy = phase != Phase::Idle;
@@ -395,12 +444,18 @@ impl eframe::App for Launcher {
                                 if !busy && installed.is_some() && release.is_some() && small_button(ui, "REPARIEREN") {
                                     self.install(ctx.clone());
                                 }
-                                if !busy && (offline.is_some() || error.is_some()) && small_button(ui, "NOCHMAL VERSUCHEN") {
+                                if !busy
+                                    && (offline.is_some() || error.is_some())
+                                    && small_button(ui, "NOCHMAL VERSUCHEN")
+                                {
                                     self.check(ctx.clone());
                                 }
                                 ui.add_space(6.0);
                                 if ui
-                                    .checkbox(&mut self.close_on_play, RichText::new("Launcher beim Spielstart schließen").size(12.0).color(DIM))
+                                    .checkbox(
+                                        &mut self.close_on_play,
+                                        RichText::new("Launcher beim Spielstart schließen").size(12.0).color(DIM),
+                                    )
                                     .changed()
                                 {
                                     self.save_settings();
@@ -422,7 +477,15 @@ impl eframe::App for Launcher {
                 });
                 if update_ready && installed.is_some() && phase == Phase::Idle {
                     ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-                        if ui.add(egui::Label::new(RichText::new("ohne Update spielen").size(11.0).underline().color(DIM)).sense(Sense::click())).clicked() {
+                        if ui
+                            .add(
+                                egui::Label::new(
+                                    RichText::new("ohne Update spielen").size(11.0).underline().color(DIM),
+                                )
+                                .sense(Sense::click()),
+                            )
+                            .clicked()
+                        {
                             self.play(&ctx);
                         }
                     });
