@@ -198,6 +198,26 @@ fn regel_kommt_ueber_den_server() {
     assert!(c.mutators.iter().all(|&m| m == Some(Mutator::Kisten)), "{:?}", c.mutators);
 }
 
+/// Volles Spiel mit Bots: Geht ein Spieler, läuft der Server weiter und Bots rücken nach.
+#[test]
+fn spieler_geht_waehrend_bots_spielen() {
+    for _ in 0..10 {
+        let cfg = Config { port: 0, bots: 7, bans_file: None, verbose: false, ..Default::default() };
+        let mut server = Server::bind(cfg).unwrap();
+        let port = server.local_port();
+        let stop = Arc::new(AtomicBool::new(false));
+        let flag = stop.clone();
+        let th = std::thread::spawn(move || server.run(&flag));
+
+        let mut c = TestClient::connect(port, "Geher", 78, 0).unwrap();
+        run(&mut [&mut c], 500);
+        c.bye();
+        std::thread::sleep(Duration::from_millis(100));
+        stop.store(true, Ordering::Relaxed);
+        th.join().expect("Server ist abgestürzt");
+    }
+}
+
 #[test]
 fn multiplayer_over_udp() {
     let dir = std::env::temp_dir().join(format!("panzer-test-{}", std::process::id()));

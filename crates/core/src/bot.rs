@@ -84,6 +84,7 @@ pub struct Bot {
     plan_in: f64,
     path: Vec<Cell>,
     goal: Option<(f64, f64)>,
+    /// Slot des Ziels. Kein Index in game.tanks: Der verschiebt sich, sobald jemand geht.
     target: Option<usize>,
     aim: Option<f64>,
     /// so lange passt der Schuss schon (Reaktionszeit)
@@ -226,13 +227,14 @@ impl Bot {
                 d
             }
         };
-        self.target = foes.iter().copied().min_by(|&a, &b| {
+        let nearest = foes.iter().copied().min_by(|&a, &b| {
             let (oa, ob) = (&game.tanks[a], &game.tanks[b]);
             (steps(oa.x, oa.y), hypot(oa.x - t.x, oa.y - t.y))
                 .partial_cmp(&(steps(ob.x, ob.y), hypot(ob.x - t.x, ob.y - t.y)))
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-        let target = self.target.map(|i| &game.tanks[i]);
+        self.target = nearest.map(|i| game.tanks[i].slot);
+        let target = nearest.map(|i| &game.tanks[i]);
         let far = target.map_or(99, |o| steps(o.x, o.y));
         let threat = self.threat(game, t);
         let goal = if let Some(th) = threat {
@@ -281,7 +283,7 @@ impl Bot {
             self.path.reverse();
         }
         self.aim = None;
-        if let Some(ti2) = self.target {
+        if let Some(ti2) = nearest {
             if threat.is_none() {
                 self.aim = self.find_aim(game, ti, ti2);
             }
@@ -438,7 +440,7 @@ impl Bot {
                 if diff.abs() > 0.05 {
                     keys |= if diff > 0.0 { RIGHT } else { LEFT };
                 }
-                let close = self.target.map(|o| hypot(game.tanks[o].x - t.x, game.tanks[o].y - t.y));
+                let close = self.target.and_then(|s| game.tank(s)).map(|o| hypot(o.x - t.x, o.y - t.y));
                 if diff.abs() < 0.5 && self.goal.is_some() && close.is_some_and(|c| c > 150.0) {
                     keys |= UP;
                 }
@@ -729,4 +731,55 @@ fn facing(game: &Game, t: &Tank, foes: &[usize], reach: f64, cone: f64) -> bool 
         let d = hypot(o.x - t.x, o.y - t.y);
         d < reach && angle_diff((o.y - t.y).atan2(o.x - t.x), t.a).abs() < cone && game.arena.clear(t.x, t.y, o.x, o.y)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Bot in Slot 1 hat gerade geplant: Slot 2 steht genau vor ihm und ist sein Ziel.
+    /// Der nächste think() plant nicht neu, das Ziel stammt also noch von vor dem Gehen.
+    fn bot_mit_ziel(players: &[usize]) -> (Game, Bot) {
+        let mut g = Game::with_rng(players, Rng::new(7));
+        g.tanks[1].a = 0.0;
+        g.tanks[2].x = g.tanks[1].x + 1.0;
+        g.tanks[2].y = g.tanks[1].y;
+        let mut bot = Bot::new(1, None);
+        bot.round = g.maze_id; // sonst würfelt think() den Planungszeitpunkt neu
+        bot.plan_in = 0.0;
+        bot.think(&g);
+        assert_eq!(bot.target, Some(2));
+        assert!(bot.aim.is_some());
+        (g, bot)
+    }
+
+    /// So ist der Server abgestürzt: Das Ziel war der letzte Panzer im Vec, dann ging ein
+    /// anderer Spieler und der Vec wurde kürzer.
+    #[test]
+    fn anderer_spieler_geht_und_ziel_war_der_letzte_panzer() {
+        let (mut g, mut bot) = bot_mit_ziel(&[0, 1, 2]);
+        g.remove_player(0);
+        bot.think(&g);
+        assert_eq!(bot.target, Some(2));
+    }
+
+    #[test]
+    fn ziel_selbst_geht() {
+        let (mut g, mut bot) = bot_mit_ziel(&[0, 1, 2]);
+        g.remove_player(2);
+        bot.think(&g);
+    }
+
+    /// Ist das Ziel nicht der letzte Panzer, stürzt nichts ab, ein gemerkter Index zeigt aber
+    /// still auf den falschen Panzer.
+    #[test]
+    fn ziel_bleibt_derselbe_panzer_wenn_jemand_geht() {
+        let (mut g, mut bot) = bot_mit_ziel(&[0, 1, 2, 3]);
+        let (x, y) = (g.tanks[1].x, g.tanks[1].y);
+        g.tanks[3].x = x + 500.0; // rückt durchs Gehen auf den alten Index von Slot 2
+        bot.goal = Some((x, y));
+        g.remove_player(0);
+        let (keys, _) = bot.think(&g);
+        assert_eq!(keys & UP, 0, "das Ziel steht direkt davor, der Bot darf nicht vorfahren");
+    }
 }

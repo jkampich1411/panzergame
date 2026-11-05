@@ -86,3 +86,30 @@ fn bot_matches_all_sizes() {
     }
     println!("Geschossarten insgesamt: {}", all.len());
 }
+
+/// Spieler gehen mitten im Match, während Geschosse und Effekte von ihnen noch unterwegs sind.
+#[test]
+fn bot_match_with_players_leaving() {
+    for seed in 0..20u64 {
+        let slots: Vec<usize> = (0..8).collect();
+        let mut g = Game::with_rng(&slots, Rng::new(seed));
+        let mut bots: Vec<Bot> = slots.iter().map(|&s| Bot::new(s, None)).collect();
+        let mut rng = Rng::new(seed ^ 0xABCD);
+        for leaver in 0..6 {
+            for tick in 0..(3.0 / TICK) as usize {
+                if tick % 20 == 0 && !g.tanks.is_empty() {
+                    let ti = rng.below(g.tanks.len());
+                    let item = ALL_ITEMS[rng.below(ALL_ITEMS.len() - 2)];
+                    g.boxes.push((g.tanks[ti].x, g.tanks[ti].y, item));
+                }
+                for b in bots.iter_mut() {
+                    let (k, f) = b.think(&g);
+                    g.apply_input(b.slot, k, f, TICK);
+                }
+                g.step(TICK);
+            }
+            g.remove_player(leaver);
+            bots.retain(|b| b.slot != leaver);
+        }
+    }
+}
