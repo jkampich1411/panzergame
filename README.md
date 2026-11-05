@@ -1,52 +1,85 @@
 # Panzer
 
-Nachbau von AZ (Tank Trouble) als Desktop-Programm in Python + pygame-ce, mit Multiplayer für bis zu 8 Spieler über IP, Computergegnern (Bots) und jeder Menge Krawall: Licht, Partikel, Zeitlupe, Ansagen und synthetisierter Musik. Alles steckt in `panzer.py`, es gibt keine Bild- oder Sounddateien.
+Nachbau von AZ (Tank Trouble) als Desktop-Spiel in **Rust** (macroquad), mit Multiplayer für bis zu 8 Spieler über das Netz, dediziertem Server mit Anti-Cheat, Chat, Kick/Bann, Computergegnern (Bots) und jeder Menge Krawall: Licht, Partikel, Zeitlupe, Ansagen und synthetisierter Musik. Es gibt keine Bild- oder Sounddateien, alles wird beim Start erzeugt (nur zwei Schriften liegen in `assets/fonts`).
 
-## Setup
+Die alte Python-Version (`panzer.py`) liegt noch im Repo, ist aber nicht mehr kompatibel mit der neuen.
 
-### Linux / macOS
+## Schnellstart
 
-```bash
-python -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python panzer.py
+Einfach das Startskript für dein System ausführen. Beim ersten Mal installiert es, was fehlt (Rust, unter Linux ein paar Bibliotheken, unter Windows die C++-Build-Tools), fragt vorher nach und baut das Spiel. Das dauert einmalig ein paar Minuten, danach startet es in Sekunden. Am einfachsten das Repo mit `git clone` holen, dann bleiben die Skripte ausführbar.
+
+| System | Spiel | Server (ohne Grafik) |
+|---|---|---|
+| **Linux** | `./start.sh` | `./server_start.sh` |
+| **macOS** | Doppelklick auf `start.command` (oder `./start.sh` im Terminal) | `server_start.command` bzw. `./server_start.sh` |
+| **Windows** | Doppelklick auf `start.bat` | Doppelklick auf `server_start.bat` |
+
+Argumente werden durchgereicht, zum Beispiel `./start.sh solo 3`, `start.bat join 100.64.0.5` oder `./server_start.sh --bots 3 --admin-pass geheim`.
+
+Hinweise:
+
+- **Linux:** Erkannt werden apt (Debian/Ubuntu/Mint), dnf (Fedora), pacman (Arch) und zypper (openSUSE). Für die Pakete wird `sudo` gebraucht. Der Server braucht nur einen C-Compiler, keine Grafik- oder Tonbibliotheken.
+- **macOS:** Fehlen die Xcode-Kommandozeilen-Tools, öffnet sich ein Installationsfenster. Danach das Skript nochmal starten. Blockiert macOS die `.command`-Datei („nicht verifizierter Entwickler“), einmal Rechtsklick → *Öffnen*. Wurde das Repo als ZIP geladen und die Skripte sind nicht ausführbar: `chmod +x *.sh *.command scripts/*.sh`.
+- **Windows:** Installiert wird über `winget` (Windows 10/11 hat das dabei): erst Rust, dann die „Build Tools für Visual Studio“ (C++). Nach der Rust-Installation muss das Skript eventuell einmal neu gestartet werden. Ohne winget öffnen sich die Download-Seiten. Beim ersten Hosten fragt die Windows-Firewall nach dem Netzwerkzugriff: zulassen, sonst kann niemand beitreten.
+- Fertige Programme liegen danach in `target/release/` (`panzer`, `panzer-server`, unter Windows mit `.exe`). Die `panzer.exe` läuft ohne weitere Dateien und kann auch so an Freunde gehen.
+
+## Aufbau
+
+```
+crates/core     Spiellogik, Labyrinth, Physik, Bots, Netzwerkprotokoll (ohne Grafik)
+crates/server   Server: UDP, 60 Ticks/s, Anti-Cheat, Chat, Kick/Bann  -> panzer-server
+crates/client   Spiel mit Grafik, Ton, Menü (hosten startet den Server im Spiel) -> panzer
+scripts/        gemeinsame Vorbereitung der Startskripte (setup.sh, setup.bat)
+start.*, server_start.*   Startskripte für Linux (.sh), macOS (.command) und Windows (.bat)
 ```
 
-### Windows
+Server und Client rechnen die Panzerbewegung mit demselben Code (`core/src/physics.rs`), deshalb stimmt die Vorhersage des eigenen Panzers exakt.
 
-Voraussetzung: Python 3 von [python.org](https://www.python.org/downloads/), bei der Installation „Add python.exe to PATH“ anhaken.
+## Bauen von Hand
 
-1. PowerShell im Projektordner öffnen (im Explorer in die Adresszeile `powershell` tippen und Enter drücken).
-2. Diese drei Befehle der Reihe nach ausführen:
+Voraussetzung: Rust (https://rustup.rs), unter Linux zusätzlich die Entwicklerpakete für ALSA, X11, Xi und OpenGL (bei Debian/Ubuntu: `sudo apt install libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev`), unter Windows die C++-Build-Tools, unter macOS die Xcode-Kommandozeilen-Tools.
 
-   ```powershell
-   py -m venv .venv
-   .venv\Scripts\pip install -r requirements.txt
-   .venv\Scripts\python panzer.py
-   ```
+```bash
+cargo build --release
+./target/release/panzer              # Spiel
+./target/release/panzer-server       # dedizierter Server
+```
 
-   Der erste legt die virtuelle Umgebung an, der zweite installiert pygame-ce, der dritte startet das Spiel. Die ersten beiden braucht es nur einmal. Danach reicht zum Spielen `.venv\Scripts\python panzer.py`.
-3. Wenn du zum ersten Mal hostest, fragt die Windows-Firewall nach dem Netzwerkzugriff. Bestätigen, sonst kann niemand beitreten.
+### Tests
 
-Probleme:
+```bash
+cargo test --release
+```
 
-- **`py` wird nicht gefunden:** Nimm `python -m venv .venv`. Öffnet sich stattdessen der Microsoft Store, ist Python nicht installiert (oder nicht im PATH).
-- **`.venv/bin/pip` wird nicht gefunden:** Das ist der Linux-Pfad. Unter Windows heißt er `.venv\Scripts\pip`.
-- **Fehler mit einem `.venv`-Ordner, der von Linux kopiert wurde:** Den Ordner löschen und mit `py -m venv .venv` neu anlegen. Eine venv läuft nur auf dem System, auf dem sie erstellt wurde.
-- **Aktivieren mit `.venv\Scripts\Activate.ps1` wird blockiert:** Einmal `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` ausführen. Mit den vollen Pfaden wie oben brauchst du das Aktivieren aber gar nicht.
+Bot-Matches mit 2–8 Spielern und ständig zufälligen Power-ups, verlustfreie Delta-Snapshots, und ein echter Server über UDP mit Test-Clients (Warteschlange, Chat, Kick/Bann, Speedhack-Bremse).
 
 ## Spielen
 
-- **Solo:** im Menü auf *Solo* klicken: du gegen Bots (Anzahl mit *Bots dazu* einstellen, mindestens 1). Gesteuert wird wie im Netzwerkspiel.
-- **Bots:** Die Zahl bei *Bots dazu* gilt fürs Hosten und fürs lokale Spiel. Bots fahren mit Wegsuche durchs Labyrinth, suchen Bandenschüsse, weichen Kugeln aus, sammeln Kisten, fliehen vor Atombomben und Luftschlägen und haben jeweils etwas andere Reflexe. Beim Hosten nehmen sie die freien Plätze von oben (Braun, Pink, …). Tritt ein Mensch bei und alles ist voll, macht ein Bot Platz.
-- **Hosten:** im Menü auf *Spiel hosten* klicken. Deine IP und der Port (5555) werden angezeigt. Der Host spielt Rot. Sobald einer beitritt (oder mit Bots sofort), geht es los. Bei jedem weiteren Beitritt startet sofort eine neue Runde mit allen (Punkte bleiben). Solange ein Platz frei ist, steht oben rechts die IP.
-- **Beitreten:** die IP des Hosts eingeben (optional mit `:port`) und auf *Beitreten* klicken oder Enter drücken. Die Farben werden der Reihe nach vergeben: Grün, Blau, Orange, Lila, Türkis, Pink, Braun. Wer als Neunter kommt, wird abgelehnt.
+- **Name:** Fürs Hosten und Beitreten muss oben im Menü ein Name stehen (1–16 Zeichen). Er wird gespeichert. Gibt es den Namen schon auf dem Server, bekommt man eine Nummer dazu.
+- **Solo:** im Menü auf *Solo* klicken: du gegen Bots (Anzahl mit *Bots dazu* einstellen, mindestens 1).
+- **Hosten:** *Spiel hosten* startet einen Server im Spiel (UDP-Port 5555). Deine IP wird angezeigt. Freie Plätze füllen die Bots aus *Bots dazu*. Du bist der Host und darfst kicken und bannen.
+- **Beitreten:** IP des Hosts eingeben (optional mit `:port`) und *Beitreten* klicken oder Enter drücken.
+- **Beitreten und Verlassen** starten keine neue Runde mehr. Wer während einer Runde beitritt, landet in der Warteschlange, schaut zu und spielt ab der nächsten Runde mit. Wer geht, dessen Panzer verschwindet, die Runde läuft weiter. Sind nur noch zwei da, geht es normal weiter, bleibt einer allein, wartet der Server auf Mitspieler.
 - **Lokal:** 2 bis 4 Spieler an einer Tastatur (Rot: ESDF + Q, Grün: Pfeiltasten + M, Blau: IJKL + U, Orange: Numpad 8/4/5/6 + 0), auf Wunsch mit Bots dazu.
-- **Große Maps:** Bis 4 Spieler ist das Labyrinth so groß wie immer (6–10 × 4–6 Zellen). Ab 5 Spielern wird es mit jedem Spieler deutlich größer, bei 8 Spielern etwa 20 × 11 Zellen. Damit es trotzdem ins Fenster passt, wird es verkleinert angezeigt. Es gibt dann auch mehr Kisten gleichzeitig. Mit F11 (Vollbild) sieht man mehr Details.
+- **Große Maps:** Ab 5 Spielern wird das Labyrinth mit jedem Spieler größer und verkleinert angezeigt.
 
-Direktstart: `python panzer.py host [port] [bots]`, `python panzer.py join 192.168.1.20[:5555]`, `python panzer.py local [2|3|4] [bots]` oder `python panzer.py solo [bots]`.
+Direktstart: `panzer host [port] [bots]`, `panzer join 192.168.1.20[:5555]`, `panzer local [2|3|4] [bots]`, `panzer solo [bots]`.
 
-Steuerung im Netzwerkspiel und solo: Pfeiltasten oder WASD zum Fahren, Leertaste zum Schießen, 1–5 für Sprüche, F2 Ton an/aus, F4 Musik an/aus, F3 zeigt FPS und Ping, F11 für Vollbild, Esc zurück ins Menü.
+Steuerung im Netzwerkspiel und solo: Pfeiltasten oder WASD fahren, Leertaste schießen, 1–7 Sprüche, T/Enter Chat, Tab Spielerliste, F2 Ton, F4 Musik, F3 FPS/Ping/Bandbreite, F11 Vollbild, Esc zurück ins Menü.
+
+### Host- und Admin-Befehle (Chat)
+
+| Befehl | Wirkung |
+|---|---|
+| `/kick <spieler> [grund]` | rauswerfen (Name, Namensanfang oder Nummer wie `#3`) |
+| `/ban <spieler> [grund]` | rauswerfen und sperren (nach IP und Installation, steht in `bans.txt`) |
+| `/unban <name\|ip\|nr>` | Sperre aufheben, `/bans` listet alle |
+| `/mute`, `/unmute <spieler>` | Chat sperren/freigeben |
+| `/bots <0-7>` | Anzahl Bots ändern (gilt ab der nächsten Runde) |
+| `/players` | Spieler mit Ping (Admins sehen die IPs) |
+| `/login <passwort>` | Admin werden (nur dedizierter Server mit `--admin-pass`) |
+
+Kick und Bann gehen auch per Klick in der Spielerliste (Tab gedrückt halten).
 
 ## Regeln
 
@@ -145,23 +178,31 @@ Ungefähr jede dritte Runde bekommt eine Sonderregel, die am Anfang groß angeze
 - **Zeitlupe:** Ist die Runde entschieden, läuft alles außer den Panzern kurz in Zeitlupe, mit Kinobalken und Zoom auf den letzten Abschuss. Auch eine Atombombe bremst die Zeit.
 - **Ansagen:** Erstes Blut, Doppel-/Dreifach-/Megakill, Trickshot (ab 3 Abprallern), Eigentor. Wer mehrere Runden in Folge gewinnt, bekommt das beim Rundensieg angezeigt (Hattrick, Nicht zu stoppen, …), dazu Konfetti.
 - **Killfeed** oben rechts mit Waffensymbol und farbigen Namen: wer wen womit erwischt hat, inklusive Eigentore
-- **Sprüche** im Netzwerkspiel und solo mit den Tasten 1–5 („Hehe!“, „Ups …“, „GG“, „Zu langsam!“, „Komm her!“) als Sprechblase über dem Panzer. Bots sagen auch mal was.
-- **Sound und Musik**: alle Effekte und ein Synthwave-Loop werden beim Start synthetisiert, in Stereo je nach Position. F2 schaltet den Ton aus und an, F4 nur die Musik.
+- **Sprüche** im Netzwerkspiel und solo mit den Tasten 1–7 („Hehe!“, „Ups …“, „GG“, „Zu langsam!“, „Komm her!“, „JUlIAN SPRING“, „SCHEIß JUNKY“) als Sprechblase über dem Panzer. Bots sagen auch mal was.
+- **Chat** im Netzwerkspiel: T oder Enter öffnet ihn, Enter schickt ab, Esc bricht ab. Tab zeigt die Spielerliste mit Ping.
+- **Sound und Musik**: alle Effekte und ein Synthwave-Loop werden beim Start synthetisiert, links/rechts je nach Position. F2 schaltet den Ton aus und an, F4 nur die Musik.
 - **Menü** mit Bots, die im Hintergrund gegeneinander kämpfen
 - **Krone** über dem Panzer und im HUD für den, der alleine vorne liegt
 - **Kettenspuren** auf dem Boden, Wackeln bei Explosionen
 
 ## Netzwerk
 
-- Der Host simuliert das Spiel mit festen 60 Ticks/s. Jeder Client bekommt beim Verbinden ein `hello` mit Spieler-Nummer und Protokollversion. Unterschiedliche Spielversionen werden mit einer Meldung abgelehnt. Beide Seiten schicken nur 30 Pakete/s (TCP, JSON-Zeilen). Der Client bündelt dafür seine Eingaben.
-- Der Client sagt seinen eigenen Panzer sofort voraus (Prediction) und gleicht ihn mit der Host-Bestätigung (`ack`) ab. Den Gegner und die Kugeln zeigt er 75 ms verzögert und interpoliert, damit unregelmäßig ankommende Pakete nicht ruckeln.
-- Bots laufen nur beim Host, für die Clients sind sie normale Panzer. Alle Effekte (Licht, Partikel, Trümmer) berechnet jeder Client selbst aus den Snapshots, übers Netz gehen nur die Ereignisse.
-- **Im selben WLAN/LAN** geht das direkt. Eventuell musst du den TCP-Port 5555 in der Firewall des Hosts freigeben (Windows fragt beim ersten Start nach).
-- **Übers Internet:** am einfachsten beide in Tailscale (oder ZeroTier), dann die Tailscale-IP des Hosts verwenden (`tailscale ip -4`). Alternativ Port-Forwarding von TCP 5555 am Router des Hosts.
+- **Dedizierter Server:** `./server_start.sh` bzw. `server_start.bat`, oder direkt `panzer-server [--port 5555] [--bots N] [--admin-pass PW] [--bans bans.txt]`. Läuft ohne Grafik, z. B. auf dem Homeserver. Auf der Konsole gehen dieselben Befehle ohne `/` (`kick`, `ban`, `bots 3`, `say hallo` …). Dann spielt niemand mit Heimvorteil, der Host-Rechner ist nicht mehr gleichzeitig Spieler und Schiedsrichter.
+- Der Server simuliert mit festen 60 Ticks/s und schickt jedem Spieler 60 Snapshots/s über **UDP**. Snapshots sind binär und als **Delta** gegen den letzten bestätigten Snapshot kodiert: typisch 30–100 Byte statt mehrerer KB JSON wie früher. Verlorene Pakete halten nichts auf (kein TCP-Stau mehr).
+- Der Client schickt pro Frame seine Eingabe und alle noch unbestätigten mit (bis zu 24), damit verlorene Pakete nichts ausmachen. Chat, Labyrinth und Spielerliste gehen als zuverlässige Nachrichten.
+- Der Client sagt seinen eigenen Panzer voraus (Prediction) und zeigt die anderen 75 ms verzögert und interpoliert.
+- **Im selben WLAN/LAN** geht das direkt. Eventuell den **UDP**-Port 5555 in der Firewall des Hosts freigeben.
+- **Übers Internet:** am einfachsten alle in Tailscale (oder ZeroTier), dann die Tailscale-IP des Hosts verwenden (`tailscale ip -4`). Alternativ Port-Forwarding von **UDP** 5555.
 
-## Als .exe für Windows
+## Anti-Cheat
 
-```bash
-pip install pyinstaller
-pyinstaller --onefile --noconsole --name Panzer panzer.py   # Ergebnis: dist/Panzer.exe
-```
+Der Server ist autoritativ: Clients schicken nur Tasten, alles andere rechnet der Server.
+
+- **Speedhack:** Jeder Spieler darf pro Tick höchstens so viel Spielzeit verbrauchen, wie real vergangen ist (+5 % zum Aufholen von Uhren-Abweichungen). Wer mehr schickt, dessen Eingaben verfallen, und es gibt eine Verwarnung. (Die Python-Version hat bei mehr als 6 wartenden Eingaben alle auf einmal ausgeführt, damit konnte ein manipulierter Client beliebig schnell fahren und schießen.)
+- **Wallhack:** Der Server schickt nichts, was man nicht sehen darf: getarnte Panzer ohne Radar und im Nebel alles außerhalb der Sicht. Ein manipulierter Client kann es also auch nicht anzeigen.
+- **Paketflut, kaputte Pakete, Dauerfeuer-Makros, Chat-Spam** werden erkannt. Nach 3 Verwarnungen fliegt man raus. Alles steht im Server-Log (Konsole).
+- Grenzen: Ein Bot-Client, der für einen Spieler zielt und abdrückt, sieht für den Server aus wie ein sehr guter Spieler. Und wer den Server selbst betreibt, kann ihn natürlich verändern, deshalb im Zweifel den dedizierten Server nehmen.
+
+## Einstellungen
+
+Name, letzte IP, Bots, Ton und eine zufällige Installations-Kennung (für Bans) stehen in `~/.config/panzer/config.txt` (Windows: `%APPDATA%\panzer\config.txt`).

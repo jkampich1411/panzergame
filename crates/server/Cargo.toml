@@ -1,0 +1,9 @@
+[package]
+name = "panzer-server"
+description = "Dedizierter Server für Panzer: autoritativ, mit Anti-Cheat, Chat, Kick/Bann"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+panzer-core = { path = "../core" }

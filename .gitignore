@@ -12,3 +12,6 @@ dist/
 .claude/
 graft/
 .ignore
+
+# Rust-Builds
+/target/

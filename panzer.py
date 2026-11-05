@@ -4624,9 +4624,7 @@ class Renderer:
         self.hist = {}  # Geschoss-id -> letzte Positionen [(x, y, zeit)]
         self.after = {}  # slot -> Nachbilder beim Turbo
         self.prev = {}  # slot -> Panzerzustand im letzten Bild
-        self.flying = (
-            []
-        )  # abgesprengte Türme [x, y, vx, vy, alter, winkel, drehung, slot]
+        self.flying = []  # abgesprengte Türme [x, y, vx, vy, alter, winkel, drehung, slot]
         self.box_seen = {}  # (x, y, art) -> Zeitpunkt des Auftauchens
         self.landed = set()
         self.marks = set()  # einmalige Geräusche je Geschoss (Pfeifen, Jet, Sirene ...)
@@ -5497,7 +5495,9 @@ class Renderer:
                 hot = (
                     col
                     if kind == "b"
-                    else (255, 190, 90) if kind != "mg" else (255, 220, 120)
+                    else (255, 190, 90)
+                    if kind != "mg"
+                    else (255, 220, 120)
                 )
                 bright = mix(hot, (255, 255, 255), 0.35)
                 self._trail(sid, bright, r + 3, 5 if kind == "b" else 4)
@@ -5667,7 +5667,9 @@ class Renderer:
             c = (
                 (40, 200, 110)
                 if kind == "rc"
-                else col if kind == "mrk" else (255, 90, 90)
+                else col
+                if kind == "mrk"
+                else (255, 90, 90)
             )
             draw_rocket(scr, x, y, a, c, k, (9 + 4 * math.sin(now * 45 + sid)) * k)
             fx, fy = x - math.cos(a) * 16 * k, y - math.sin(a) * 16 * k

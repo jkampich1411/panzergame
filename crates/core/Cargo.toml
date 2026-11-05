@@ -1,0 +1,8 @@
+[package]
+name = "panzer-core"
+description = "Spiellogik, Labyrinth, Bots und Netzwerkprotokoll von Panzer (ohne Grafik)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]

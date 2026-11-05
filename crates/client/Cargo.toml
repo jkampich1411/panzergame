@@ -1,0 +1,11 @@
+[package]
+name = "panzer"
+description = "Panzer – Labyrinth-Panzerschlacht (Client mit Grafik und Ton)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+panzer-core = { path = "../core" }
+panzer-server = { path = "../server" }
+macroquad = { version = "=0.4.14", default-features = false, features = ["audio"] }

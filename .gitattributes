@@ -1,0 +1,4 @@
+# Startskripte: Unix-Zeilenenden für Linux/macOS, Windows-Zeilenenden für .bat
+*.sh       text eol=lf
+*.command  text eol=lf
+*.bat      text eol=crlf
