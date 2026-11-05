@@ -193,26 +193,25 @@ pub fn install(release: &Release, data: &Path, progress: &mut dyn FnMut(u64, u64
     let asset = release
         .asset(&name)
         .ok_or_else(|| format!("Für dieses System gibt es im Release {} kein Paket ({name}).", release.tag))?;
+    let sums = release.asset(CHECKSUMS).ok_or_else(|| format!("Im Release {} fehlen die Prüfsummen.", release.tag))?;
     let dl = data.join("download");
     fs::create_dir_all(&dl).map_err(|e| format!("Kann den Ordner {} nicht anlegen: {e}", dl.display()))?;
     let part = dl.join(format!("{name}.part"));
     let hash = download(&asset.url, &part, asset.size, progress)?;
     // Prüfsumme: schützt vor kaputten oder abgebrochenen Downloads
-    if let Some(sums) = release.asset(CHECKSUMS) {
-        let text = agent()
-            .get(&sums.url)
-            .call()
-            .map_err(|e| format!("Prüfsummen nicht ladbar: {e}"))?
-            .into_string()
-            .map_err(|e| e.to_string())?;
-        match expected_hash(&text, &name) {
-            Some(want) if want == hash => {}
-            Some(_) => {
-                let _ = fs::remove_file(&part);
-                return Err("Prüfsumme stimmt nicht – der Download ist beschädigt. Bitte nochmal versuchen.".into());
-            }
-            None => return Err(format!("{name} fehlt in {CHECKSUMS}.")),
+    let text = agent()
+        .get(&sums.url)
+        .call()
+        .map_err(|e| format!("Prüfsummen nicht ladbar: {e}"))?
+        .into_string()
+        .map_err(|e| e.to_string())?;
+    match expected_hash(&text, &name) {
+        Some(want) if want == hash => {}
+        Some(_) => {
+            let _ = fs::remove_file(&part);
+            return Err("Prüfsumme stimmt nicht – der Download ist beschädigt. Bitte nochmal versuchen.".into());
         }
+        None => return Err(format!("{name} fehlt in {CHECKSUMS}.")),
     }
     let games = data.join("game");
     let tmp = games.join(format!("{}.tmp", release.tag));
@@ -265,6 +264,19 @@ mod tests {
         let sums = "abc123  panzer-game-linux-x86_64.zip\nDEF456 *panzer-game-windows-x86_64.zip\n";
         assert_eq!(expected_hash(sums, "panzer-game-windows-x86_64.zip").as_deref(), Some("def456"));
         assert_eq!(expected_hash(sums, "fehlt.zip"), None);
+    }
+
+    #[test]
+    fn refuses_release_without_checksums() {
+        let name = platform_asset();
+        let feed = format!(
+            r#"{{"tag_name":"v9.0.0","assets":[{{"name":"{name}","browser_download_url":"http://127.0.0.1:9/x.zip","size":1}}]}}"#
+        );
+        let release = parse_release(&feed).unwrap();
+        let dir = std::env::temp_dir().join(format!("panzer-launcher-nosums-{}", std::process::id()));
+        let err = install(&release, &dir, &mut |_, _| {}).unwrap_err();
+        assert!(err.contains("Prüfsummen"), "{err}");
+        assert!(!dir.exists(), "darf ohne Prüfsummen nichts anlegen");
     }
 
     /// Mini-HTTP-Server für den Test: liefert Dateien aus einer Liste aus

@@ -215,7 +215,8 @@ impl Launcher {
             let (tw, th) = (t.size()[0] as f32, t.size()[1] as f32);
             let k = (rect.width() / tw).max(rect.height() / th);
             let (vw, vh) = (rect.width() / (tw * k), rect.height() / (th * k));
-            let uv = Rect::from_min_size(Pos2::new((1.0 - vw) * 0.65, (1.0 - vh) / 2.0), Vec2::new(vw, vh));
+            // Ausschnitt so, dass die Panzer rechts neben dem Text liegen
+            let uv = Rect::from_min_size(Pos2::new((1.0 - vw) * 0.2, (1.0 - vh) / 2.0), Vec2::new(vw, vh));
             p.image(t.id(), rect, uv, Color32::from_gray(170));
         }
         let mut mesh = Mesh::default();
@@ -286,6 +287,7 @@ impl Launcher {
 /// Großer Knopf im Stil der Website (gefüllt bzw. umrandet)
 fn big_button(ui: &mut egui::Ui, text: &str, filled: bool, enabled: bool) -> bool {
     let (fill, color) = if filled { (ACCENT, Color32::from_rgb(20, 18, 10)) } else { (Color32::TRANSPARENT, TEXT) };
+    let color = if enabled { color } else { DIM };
     let button = egui::Button::new(RichText::new(text).size(20.0).color(color).family(FontFamily::Name("title".into())))
         .fill(if enabled { fill } else { LINE })
         .stroke(Stroke::new(1.0, if filled { ACCENT } else { LINE }))
@@ -362,7 +364,7 @@ impl eframe::App for Launcher {
                             }
                             (Phase::Idle, None) => match (&installed, &release, &offline) {
                                 (Some(i), Some(r), _) if r.tag == i.version => (format!("Bereit · {} ist aktuell", i.version), TEXT),
-                                (Some(i), Some(r), _) => (format!("Update verfügbar: {} → {}", i.version, r.tag), ACCENT),
+                                (Some(i), Some(r), _) => (format!("Update verfügbar: {} auf {}", i.version, r.tag), ACCENT),
                                 (None, Some(r), _) => {
                                     let size = r.asset(&update::platform_asset()).map_or(String::new(), |a| format!(" ({})", human(a.size)));
                                     (format!("Noch nicht installiert · {}{size}", r.tag), TEXT)
