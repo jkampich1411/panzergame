@@ -581,6 +581,23 @@ footer a:hover {
   color: var(--text);
 }
 
+/* Easter Egg: unsichtbar, bis man drüberfährt, es antippt oder markiert */
+.secret {
+  color: transparent;
+  cursor: default;
+  transition: color 0.3s var(--ease);
+}
+
+.secret:hover,
+.secret:focus {
+  color: var(--accent);
+  outline: none;
+}
+
+.secret::selection {
+  color: var(--accent);
+}
+
 /* Bewegung nur, wenn sie erwünscht ist */
 @media (prefers-reduced-motion: no-preference) {
   .hero-copy > * {
