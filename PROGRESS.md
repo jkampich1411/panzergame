@@ -83,6 +83,8 @@ Getestet: Testsuite auf Linux, Windows und macOS in CI, .deb per `apt` auf Ubunt
 
 **Nicht getestet:** Launcher und Spiel mit Fenster unter Windows und macOS (die CI-Rechner haben keine GPU). Der Ablauf über die Knöpfe lief unter Linux nur mit simulierten Klicks und einmal komplett bis zum Spielstart.
 
+**Veröffentlicht:** v2.0.0 am 2026-11-05. Am echten Release geprüft: alle Prüfsummen, der Launcher-Code installiert das Spiel aus dem GitHub-Feed, Spiel und AppImage aus dem Release starten unter Debian 13.
+
 **Offen:** Launcher und Spiel auf echten Windows- und macOS-Rechnern ausprobieren. Der Launcher aktualisiert sich nicht selbst, nur das Spiel.
 
 **Gelernt:** Roboto hat kein `→`, egui zeichnet dann ein Kästchen. macroquads `export_png` spiegelt vertikal. `hyprctl dispatch sendshortcut` mit `mouse:272` klickt, ist aber auf dem benutzten Desktop unzuverlässig: Wechselt jemand den Workspace, treffen Klick und `grim` etwas anderes. Fenstertests deshalb nur ohne Klick, ohne Fokus und nach Prüfung des sichtbaren Workspaces, Websites headless. `.btn { display: inline-flex }` überschreibt das `hidden`-Attribut.
