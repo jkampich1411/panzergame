@@ -1,10 +1,10 @@
-## Neu in 2.0
-- Komplett neu in Rust: schneller und stabiler
-- Launcher für Windows, macOS und Linux, der das Spiel aktuell hält
-- Dedizierter Server mit Anti-Cheat
-- Chat, Spielerliste, Kick und Bann für den Host
-- Name ist Pflicht, doppelte Namen bekommen eine Nummer
-- Beitreten ohne Rundenneustart: Neue warten in der Warteschlange
+## Neu in 2.1
+- 8 neue Waffen: Querschläger, Schlangenkugel, Zeitbombe, Napalm, Laserschranke, Kugelsprinkler, Enterhaken und Selbstzerstörung
+- Im Menü lässt sich die Sonderregel wählen: Zufall, keine oder immer dieselbe, zum Beispiel nur Kistenregen
 
-## Netzwerk
-- UDP mit Delta-Snapshots: rund 30-100 Byte statt mehrerer KB pro Paket
+## Bots
+- Legen jetzt wirklich Minen und Wände
+- Bleiben mit Nahkampfwaffen nicht mehr untätig stehen
+
+## Wichtig
+- Alle Spieler brauchen diese Version, mit 2.0 kann man nicht mehr zusammen spielen
