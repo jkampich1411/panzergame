@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Panzer
+Comment=Labyrinth-Panzerschlacht für bis zu 8 Spieler
+Exec=panzer-launcher
+Icon=panzer-launcher
+Terminal=false
+Categories=Game;ActionGame;
+Keywords=panzer;tank;multiplayer;
+StartupWMClass=panzer-launcher

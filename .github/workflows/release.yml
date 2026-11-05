@@ -1,0 +1,110 @@
+# Baut Launcher, Spielpaket und Server für alle Systeme.
+#   Tag v*         bauen, testen und als GitHub-Release veröffentlichen (Version muss zu Cargo.toml passen)
+#   andere Pushes  nur bauen und testen, wenn sich die Pakete ändern: Ergebnis als Actions-Artefakt
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+    branches-ignore: [main]
+    paths:
+      - ".github/workflows/release.yml"
+      - "packaging/**"
+      - "crates/launcher/**"
+      - "Cargo.lock"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    # Ältere glibc als das Runner-Image, damit es auch auf Debian 12 und Ubuntu 22.04 läuft
+    container: ubuntu:22.04
+    steps:
+      - name: Pakete
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq build-essential ca-certificates curl dpkg-dev file git pkg-config zip \
+            libasound2-dev libgl1-mesa-dev libx11-dev libxi-dev
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: Version prüfen
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n1)
+          test "${GITHUB_REF_NAME#v}" = "$version" || { echo "Tag $GITHUB_REF_NAME passt nicht zu Cargo.toml ($version)"; exit 1; }
+      - name: Tests
+        run: cargo test --release --workspace --locked
+      - name: Pakete bauen
+        run: packaging/linux/build.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux
+          path: dist/*
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Rust
+        run: |
+          if ! command -v rustup >/dev/null; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          fi
+      - name: Pakete bauen
+        run: packaging/macos/build.sh
+      - name: Startet der Server auf diesem Rechner?
+        run: |
+          unzip -q -o dist/panzer-server-macos-universal.zip -d target/smoke
+          target/smoke/panzer-server --port 5599 & pid=$!
+          sleep 2
+          kill -0 "$pid"
+          kill "$pid"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos
+          path: dist/*
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Inno Setup
+        run: choco install innosetup --no-progress -y
+      - name: Pakete bauen
+        run: packaging\windows\build.ps1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, macos, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Prüfsummen
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS.txt
+      - name: Release veröffentlichen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag \
+            --title "Panzer ${GITHUB_REF_NAME#v}" --notes-file RELEASE_NOTES.md
