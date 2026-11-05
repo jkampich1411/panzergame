@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Panzer – AZ/Tank-Trouble-Klon mit Multiplayer über IP, Bots und ordentlich Krawall.
+"""Panzer – Labyrinth-Panzerschlacht mit Multiplayer über IP, Bots und ordentlich Krawall.
 
     python panzer.py                          Menü
     python panzer.py host [port] [bots]       Spiel hosten (Standard-Port 5555), freie Plätze mit Bots

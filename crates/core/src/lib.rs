@@ -1,4 +1,4 @@
-//! Panzer – AZ/Tank-Trouble-Klon. Dieses Crate enthält alles ohne Grafik:
+//! Panzer – Labyrinth-Panzerschlacht. Dieses Crate enthält alles ohne Grafik:
 //! Labyrinth, Physik, die autoritative Spiellogik, Bots und das Netzwerkprotokoll.
 //! Server und Client benutzen denselben Code, deshalb stimmt die Prediction exakt.
 

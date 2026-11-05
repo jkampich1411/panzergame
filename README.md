@@ -1,6 +1,6 @@
 # Panzer
 
-Nachbau von AZ (Tank Trouble) als Desktop-Spiel in **Rust** (macroquad), mit Multiplayer für bis zu 8 Spieler über das Netz, dediziertem Server mit Anti-Cheat, Chat, Kick/Bann, Computergegnern (Bots) und jeder Menge Krawall: Licht, Partikel, Zeitlupe, Ansagen und synthetisierter Musik. Es gibt keine Bild- oder Sounddateien, alles wird beim Start erzeugt (nur zwei Schriften liegen in `assets/fonts`).
+Labyrinth-Panzerschlacht als Desktop-Spiel in **Rust** (macroquad), mit Multiplayer für bis zu 8 Spieler über das Netz, dediziertem Server mit Anti-Cheat, Chat, Kick/Bann, Computergegnern (Bots) und jeder Menge Krawall: Licht, Partikel, Zeitlupe, Ansagen und synthetisierter Musik. Es gibt keine Bild- oder Sounddateien, alles wird beim Start erzeugt (nur zwei Schriften liegen in `assets/fonts`).
 
 Die alte Python-Version (`panzer.py`) liegt noch im Repo, ist aber nicht mehr kompatibel mit der neuen.
 
@@ -225,3 +225,7 @@ Der Server ist autoritativ: Clients schicken nur Tasten, alles andere rechnet de
 ## Einstellungen
 
 Name, letzte IP, Bots, Ton und eine zufällige Installations-Kennung (für Bans) stehen in `~/.config/panzer/config.txt` (Windows: `%APPDATA%\panzer\config.txt`).
+
+## Lizenz
+
+MIT, siehe [LICENSE](LICENSE). Die Schriften in `assets/fonts` stehen unter der Apache License 2.0.

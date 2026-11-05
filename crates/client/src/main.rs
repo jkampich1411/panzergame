@@ -1,4 +1,4 @@
-//! Panzer – AZ/Tank-Trouble-Klon mit Multiplayer über UDP, Bots und ordentlich Krawall.
+//! Panzer – Labyrinth-Panzerschlacht mit Multiplayer über UDP, Bots und ordentlich Krawall.
 //!
 //!     panzer                          Menü
 //!     panzer host [port] [bots]       Spiel hosten (Standard-Port 5555), freie Plätze mit Bots
