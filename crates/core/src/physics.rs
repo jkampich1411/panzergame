@@ -158,6 +158,15 @@ pub fn move_tank(t: &mut Body, eff: &Effects, charging: bool, mut keys: u8, dt: 
 }
 
 /// Strecke bis zur ersten Wand in Richtung a (höchstens length).
+/// Endpunkte einer Laserschranke: von (x, y) in beide Richtungen bis zur nächsten Wand.
+/// Server und Client rechnen damit, Wände können sich während der Runde ändern.
+#[allow(clippy::type_complexity)]
+pub fn fence_ends(arena: &Arena, x: f64, y: f64, a: f64) -> ((f64, f64), (f64, f64)) {
+    let back = a + std::f64::consts::PI;
+    let (d0, d1) = (first_wall(arena, x, y, a, FENCE_LEN), first_wall(arena, x, y, back, FENCE_LEN));
+    ((x + a.cos() * d0, y + a.sin() * d0), (x + back.cos() * d1, y + back.sin() * d1))
+}
+
 pub fn first_wall(arena: &Arena, x: f64, y: f64, a: f64, length: f64) -> f64 {
     let (pts, _) = arena.raycast(x, y, a, length, &[]);
     if pts.len() > 1 {

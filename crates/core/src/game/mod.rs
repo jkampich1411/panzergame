@@ -212,6 +212,8 @@ pub struct Game {
     pub fire_seen: [Option<u16>; MAX_PLAYERS],
     pub feed: Vec<Feed>,
     pub mutator: Option<Mutator>,
+    /// welche Sonderregeln dieses Spiel benutzt
+    pub rule: RoundRule,
     pub theme: Option<usize>,
     /// Slots der Computergegner (nur für die Anzeige)
     pub bots: Vec<usize>,
@@ -245,7 +247,16 @@ impl Game {
         Self::with_rng(players, Rng::from_entropy())
     }
 
-    pub fn with_rng(players: &[usize], mut rng: Rng) -> Game {
+    pub fn with_rng(players: &[usize], rng: Rng) -> Game {
+        Self::build(players, rng, RoundRule::default())
+    }
+
+    /// Spiel mit festgelegter Sonderregel (gilt schon für die erste Runde)
+    pub fn with_rule(players: &[usize], rule: RoundRule) -> Game {
+        Self::build(players, Rng::from_entropy(), rule)
+    }
+
+    fn build(players: &[usize], mut rng: Rng, rule: RoundRule) -> Game {
         let maze = Maze::generate(0, players.len().max(2), &mut rng);
         let arena = Arena::new(&maze);
         let mut g = Game {
@@ -260,6 +271,7 @@ impl Game {
             fire_seen: [None; MAX_PLAYERS],
             feed: Vec::new(),
             mutator: None,
+            rule,
             theme: None,
             bots: Vec::new(),
             maze,
@@ -344,12 +356,16 @@ impl Game {
         }
         self.maze_id += 1;
         let mut maze = Maze::generate(self.maze_id, self.players.len(), &mut self.rng);
-        // Sonderregel, nie zweimal dieselbe hintereinander
-        let mut m = None;
-        if self.rng.random() < MUTATOR_CHANCE {
-            let pool: Vec<Mutator> = MUTATORS.iter().copied().filter(|&x| Some(x) != self.mutator).collect();
-            m = Some(self.rng.choice(&pool));
-        }
+        let m = match self.rule {
+            RoundRule::Off => None,
+            RoundRule::Only(m) => Some(m),
+            // Zufall: nie zweimal dieselbe hintereinander
+            RoundRule::Random if self.rng.random() < MUTATOR_CHANCE => {
+                let pool: Vec<Mutator> = MUTATORS.iter().copied().filter(|&x| Some(x) != self.mutator).collect();
+                Some(self.rng.choice(&pool))
+            }
+            RoundRule::Random => None,
+        };
         self.mutator = m;
         maze.mutator = m;
         // Jede Runde ein anderer Look (rein optisch)

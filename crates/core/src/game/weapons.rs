@@ -30,6 +30,10 @@ fn single_shot(w: Item) -> Option<(Kind, f64, f64, f64, f64)> {
         Item::Fw => (Kind::Fw, FW_SPEED, 4.0, FW_FUSE, 0.3),
         Item::Seek => (Kind::Seek, SEEK_SPEED, 4.0, SEEK_LIFE, 0.3),
         Item::Phase => (Kind::Phase, PHASE_SPEED, 4.0, PHASE_LIFE, OWNER_GRACE),
+        Item::Split => (Kind::Split, SPLIT_SPEED, 4.0, SPLIT_LIFE, OWNER_GRACE),
+        Item::Wave => (Kind::Wave, WAVE_SPEED, 4.0, WAVE_LIFE, OWNER_GRACE),
+        Item::Napalm => (Kind::Napalm, NAPALM_SPEED, 5.0, NAPALM_FUSE, 0.4),
+        Item::Hook => (Kind::Hook, HOOK_SPEED, 5.0, HOOK_LIFE, 1e9),
         _ => return None,
     })
 }
@@ -53,6 +57,9 @@ fn laid(w: Item) -> Option<(Kind, f64, f64)> {
         Item::Oil => (Kind::Oil, OIL_R, OIL_LIFE),
         Item::Spider => (Kind::Spider, 6.0, SPIDER_LIFE),
         Item::Sentry => (Kind::Sentry, SENTRY_R, SENTRY_LIFE),
+        Item::Timebomb => (Kind::Timebomb, 8.0, TIMEBOMB_FUSE),
+        Item::Fence => (Kind::Fence, 6.0, FENCE_ARM + FENCE_TIME),
+        Item::Sprinkler => (Kind::Sprinkler, SENTRY_R, SPRINKLER_ARM + SPRINKLER_TIME),
         _ => return None,
     })
 }
@@ -114,6 +121,11 @@ impl Game {
                 self.shots[si].ang = a;
             } else if kind == Kind::Spider {
                 self.shots[si].grace = 1e9; // nur Gegner lösen sie aus
+            } else if kind == Kind::Fence {
+                self.shots[si].ang = a + PI / 2.0; // quer zur Fahrtrichtung
+            } else if kind == Kind::Sprinkler {
+                self.shots[si].cool = SPRINKLER_ARM;
+                self.shots[si].ang = a;
             }
         } else {
             match w {
@@ -146,6 +158,11 @@ impl Game {
                     let (x, y) = ahead(&self.arena, t.x, t.y, t.a, ORBIT_DIST, 12.0);
                     let si = self.place(Kind::Orbit, slot, x, y, ORBIT_R, ORBIT_DELAY + ORBIT_TIME);
                     self.shots[si].ang = a;
+                }
+                Item::Destruct => {
+                    let (x, y) = (self.tanks[ti].x, self.tanks[ti].y);
+                    let si = self.place(Kind::Destruct, slot, x, y, 0.0, DESTRUCT_FUSE);
+                    self.shots[si].stuck = Some(slot as i8); // fährt mit dem Panzer mit
                 }
                 _ => {}
             }
@@ -561,6 +578,34 @@ impl Game {
             self.spawn(Kind::Spk, owner, sx, sy, a, v, 2.0, life, 0.0, 0.0);
         }
         self.fx(FxData::Fw { x: q16(sx), y: q16(sy) }, 0.6);
+    }
+
+    /// Napalm: das Geschoss platzt und hinterlässt eine brennende Fläche.
+    pub(super) fn napalm(&mut self, si: usize) {
+        self.shots[si].dead = true;
+        let (sx, sy, owner) = (self.shots[si].x, self.shots[si].y, self.shots[si].owner);
+        self.place(Kind::Burn, owner, sx, sy, NAPALM_R, NAPALM_BURN);
+        let (x, y) = qp(sx, sy);
+        self.fx(FxData::Boom { x, y, size: 70 }, 0.5);
+    }
+
+    /// Querschläger: teilt sich beim Abprallen in zwei, die Kugeln fliegen auseinander.
+    pub(super) fn split(&mut self, si: usize) {
+        if self.shots[si].keys >= SPLIT_GENS {
+            return;
+        }
+        self.shots[si].keys += 1;
+        let s = &self.shots[si];
+        let (x, y, owner, a, speed, r, life) = (s.x, s.y, s.owner, s.heading(), s.speed, s.r, s.life);
+        let (age, generation, bounces) = (s.age, s.keys, s.bounces);
+        let copy = self.spawn(Kind::Split, owner, x, y, a + SPLIT_ANGLE, speed, r, life, 0.0, 0.0);
+        let c = &mut self.shots[copy];
+        c.age = age;
+        c.keys = generation;
+        c.bounces = bounces;
+        let s = &mut self.shots[si];
+        s.vx = (a - SPLIT_ANGLE).cos() * speed;
+        s.vy = (a - SPLIT_ANGLE).sin() * speed;
     }
 
     pub(super) fn ignite(&mut self, si: usize) {

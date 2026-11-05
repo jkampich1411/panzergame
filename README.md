@@ -109,7 +109,7 @@ Kick und Bann gehen auch per Klick in der Spielerliste (Tab gedrückt halten).
 
 ## Power-ups
 
-Alle 6–11 s erscheint eine Kiste mit lila Schimmer, maximal 3 gleichzeitig. Drüberfahren hebt sie auf. Man trägt immer nur eine Waffe; wer schon eine hat, lässt Waffenkisten liegen. Effekte (untere Tabelle) wirken sofort und gehen immer. Insgesamt gibt es 59 Power-ups: 38 Waffen, 16 Effekte, die Wundertüte und 4 Sachen, die es nur aus der Wundertüte gibt.
+Alle 6–11 s erscheint eine Kiste mit lila Schimmer, maximal 3 gleichzeitig. Drüberfahren hebt sie auf. Man trägt immer nur eine Waffe; wer schon eine hat, lässt Waffenkisten liegen. Effekte (untere Tabelle) wirken sofort und gehen immer. Insgesamt gibt es 67 Power-ups: 46 Waffen, 16 Effekte, die Wundertüte und 4 Sachen, die es nur aus der Wundertüte gibt.
 
 **Waffen**
 
@@ -153,6 +153,14 @@ Alle 6–11 s erscheint eine Kiste mit lila Schimmer, maximal 3 gleichzeitig. Dr
 | Frostnova | friert alle Panzer im Umkreis von 130 px 3 s ein |
 | Orbitallaser | markiert einen Punkt 240 px voraus, 1,6 s später wandert dort ein Strahl von oben weiter und trifft alles, auch durch Schilde |
 | Prisma | Laserstrahl, der sich an der ersten Wand in drei Strahlen aufspaltet |
+| Querschläger | Kugel, die sich bei den ersten 3 Abprallern jeweils verdoppelt: bis zu 8 Kugeln, die auch dich treffen |
+| Schlangenkugel | 3 Schuss, die in Wellenlinien fliegen und schwer vorherzusehen sind |
+| Zeitbombe | 2 Bomben hinter den Panzer. Sie ticken 3,5 s lang (mit Countdown und Reichweiten-Ring) und reißen alles im Umkreis mit, auch dich. |
+| Napalm | 2 Schuss. Platzt an Wand, Panzer oder nach gut 1 s und hinterlässt eine Feuerfläche, die 4,5 s brennt und jeden darin erwischt, auch dich. Wände schützen. |
+| Laserschranke | 2 Schranken quer hinter den Panzer, von Wand zu Wand. Nach 0,8 s tödlich für jeden, auch für dich, und 6 s lang aktiv. |
+| Kugelsprinkler | stellt ein Gerät hinter den Panzer, das sich dreht und gut 3 s lang Kugeln in zwei Richtungen spuckt |
+| Enterhaken | 3 Schuss. In einer Wand zieht er dich hin, an einem Panzer zieht er den Gegner zu dir und friert ihn 1,4 s ein. |
+| Selbstzerstörung | Nach 1,2 s fliegst du in die Luft und reißt alles im Umkreis von 120 px mit. Nur ein Schild oder der Superstern rettet dich. |
 
 **Effekte**
 
@@ -178,7 +186,7 @@ Alle 6–11 s erscheint eine Kiste mit lila Schimmer, maximal 3 gleichzeitig. Dr
 
 ## Sonderregeln
 
-Ungefähr jede dritte Runde bekommt eine Sonderregel, die am Anfang groß angezeigt wird und oben in der Mitte stehen bleibt:
+Ungefähr jede dritte Runde bekommt eine Sonderregel, die am Anfang groß angezeigt wird und oben in der Mitte stehen bleibt. Im Menü lässt sich das unter **Regel** ändern: *Zufall* (Standard), *Keine* oder eine feste Regel, zum Beispiel nur Kistenregen. Die Auswahl wird gespeichert und gilt für Solo, Lokal und beim Hosten. Beim Beitreten gilt, was der Host eingestellt hat.
 
 | Regel | Was passiert |
 |---|---|

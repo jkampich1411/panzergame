@@ -33,6 +33,8 @@ pub struct Config {
     pub bind: IpAddr,
     /// freie Plätze mit so vielen Bots auffüllen
     pub bots: usize,
+    /// welche Sonderregeln die Runden bekommen
+    pub rule: RoundRule,
     /// wer diesen Schlüssel im Hello mitschickt, ist Admin (0 = keiner)
     pub host_key: u64,
     /// Passwort für /login (dedizierter Server)
@@ -48,6 +50,7 @@ impl Default for Config {
             port: PORT,
             bind: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
             bots: 0,
+            rule: RoundRule::default(),
             host_key: 0,
             admin_pass: None,
             bans_file: Some(PathBuf::from("bans.txt")),
@@ -719,7 +722,7 @@ impl Server {
         } else {
             match self.game.as_mut() {
                 None => {
-                    let mut g = Game::new(&players);
+                    let mut g = Game::with_rule(&players, self.cfg.rule);
                     g.time = self.start.elapsed().as_secs_f64(); // Serverzeit läuft durch
                     self.game = Some(g);
                     self.apply_round();

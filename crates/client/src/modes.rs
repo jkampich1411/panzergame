@@ -40,7 +40,7 @@ fn hint(g: &Gfx, text: &str) {
 pub async fn run_local(app: &mut App, players: usize, bots: usize) -> bool {
     let n = (players + bots).min(MAX_PLAYERS).max(2);
     let slots: Vec<usize> = (0..n).collect();
-    let mut game = Game::new(&slots);
+    let mut game = Game::with_rule(&slots, app.cfg.rule);
     // nur für Tests: bestimmte Sonderregel erzwingen (PANZER_TEST_MUT=nebel|dunkel|...)
     if let Ok(want) = std::env::var("PANZER_TEST_MUT") {
         for _ in 0..500 {
@@ -143,7 +143,7 @@ impl Drop for HostCtx {
 
 pub async fn run_host(app: &mut App, port: u16, bots: usize) -> bool {
     let host_key = panzer_core::rng::Rng::from_entropy().next_u64() | 1;
-    let cfg = ServerConfig { port, bots, host_key, ..Default::default() };
+    let cfg = ServerConfig { port, bots, rule: app.cfg.rule, host_key, ..Default::default() };
     let mut server = match Server::bind(cfg) {
         Ok(s) => s,
         Err(e) => return message(app, &format!("Port {port} geht nicht: {e}")).await,
@@ -317,8 +317,11 @@ pub async fn menu(app: &mut App) -> Option<Action> {
     let join_b = Rect::new(cx - 190.0, 368.0, 380.0, 50.0);
     let local_b: Vec<(usize, Rect)> =
         (1..=4).map(|n| (n, Rect::new(cx - 190.0 + (n - 1) as f32 * 97.0, 458.0, 89.0, 44.0))).collect();
-    let minus_b = Rect::new(cx + 44.0, 520.0, 40.0, 32.0);
-    let plus_b = Rect::new(cx + 150.0, 520.0, 40.0, 32.0);
+    let minus_b = Rect::new(cx + 44.0, 514.0, 40.0, 32.0);
+    let plus_b = Rect::new(cx + 150.0, 514.0, 40.0, 32.0);
+    let rule_prev = Rect::new(cx - 94.0, 552.0, 34.0, 32.0);
+    let rule_next = Rect::new(cx + 156.0, 552.0, 34.0, 32.0);
+    let rules = RoundRule::all();
     drain_chars();
     loop {
         if is_quit_requested() {
@@ -381,10 +384,10 @@ pub async fn menu(app: &mut App) -> Option<Action> {
             cx - 215.0,
             186.0,
             430.0,
-            420.0,
+            446.0,
             Color::new(13.0 / 255.0, 15.0 / 255.0, 21.0 / 255.0, 215.0 / 255.0),
         );
-        draw_rectangle_lines(cx - 215.0, 186.0, 430.0, 420.0, 1.0, col([70, 78, 100]));
+        draw_rectangle_lines(cx - 215.0, 186.0, 430.0, 446.0, 1.0, col([70, 78, 100]));
         name.draw(g, name_r, "Dein Name (Pflicht fürs Online-Spiel)", m);
         let mut action = None;
         if button(g, host_b, "Spiel hosten", m, ACCENT_C, 24.0) && named(&mut name, &mut error) {
@@ -414,7 +417,7 @@ pub async fn menu(app: &mut App) -> Option<Action> {
                 });
             }
         }
-        g.fancy("BOTS DAZU", cx - 130.0, 536.0, 20.0, TEXT_C, 2.0, false, 1.0, 1.0);
+        g.fancy("BOTS DAZU", cx - 130.0, 530.0, 20.0, TEXT_C, 2.0, false, 1.0, 1.0);
         for (r, d) in [(minus_b, -1i32), (plus_b, 1)] {
             if button(g, r, if d < 0 { "–" } else { "+" }, m, ACCENT_C, 26.0) {
                 app.cfg.bots = (app.cfg.bots as i32 + d).clamp(0, MAX_PLAYERS as i32 - 1) as usize;
@@ -424,7 +427,7 @@ pub async fn menu(app: &mut App) -> Option<Action> {
         g.fancy(
             &app.cfg.bots.to_string(),
             (minus_b.x + minus_b.w + plus_b.x) / 2.0,
-            536.0,
+            530.0,
             34.0,
             ACCENT_C,
             3.0,
@@ -432,6 +435,18 @@ pub async fn menu(app: &mut App) -> Option<Action> {
             1.0,
             1.0,
         );
+        // Sonderregel: gilt für die ganze Partie, wenn man nicht nur beitritt
+        g.fancy("REGEL", cx - 150.0, 568.0, 20.0, TEXT_C, 2.0, false, 1.0, 1.0);
+        let here = rules.iter().position(|&r| r == app.cfg.rule).unwrap_or(0);
+        for (r, step, label) in [(rule_prev, rules.len() - 1, "<"), (rule_next, 1, ">")] {
+            if button(g, r, label, m, ACCENT_C, 22.0) {
+                app.cfg.rule = rules[(here + step) % rules.len()];
+                app.r.sfx.play("blip", None, 1.0);
+            }
+        }
+        let rule_x = (rule_prev.x + rule_prev.w + rule_next.x) / 2.0;
+        g.fancy(app.cfg.rule.name(), rule_x, 568.0, 20.0, ACCENT_C, 2.0, false, 1.0, 1.0);
+        g.text(app.cfg.rule.desc(), cx, 597.0, 13.0, col(TEXT_C), 0.5);
         let b = app.cfg.bots.max(1);
         g.text(
             &format!(
@@ -439,14 +454,14 @@ pub async fn menu(app: &mut App) -> Option<Action> {
                 if b > 1 { "s" } else { "" }
             ),
             cx,
-            580.0,
+            616.0,
             13.0,
             col(DIM_C),
             0.5,
         );
         if let Some((e, at)) = &error {
             if get_time() - at < 4.0 {
-                g.fancy(e, cx, 628.0, 20.0, [255, 110, 90], 2.0, false, 1.0, 1.0);
+                g.fancy(e, cx, 646.0, 20.0, [255, 110, 90], 2.0, false, 1.0, 1.0);
             }
         }
         g.text(

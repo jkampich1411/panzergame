@@ -79,6 +79,14 @@ items! {
     Frost = "Frostnova", Weapon, 1;
     Orbit = "Orbitallaser", Weapon, 1;
     Prism = "Prisma", Weapon, 1;
+    Split = "Querschläger", Weapon, 1;
+    Wave = "Schlangenkugel", Weapon, 3;
+    Timebomb = "Zeitbombe", Weapon, 2;
+    Napalm = "Napalm", Weapon, 2;
+    Fence = "Laserschranke", Weapon, 2;
+    Sprinkler = "Kugelsprinkler", Weapon, 1;
+    Hook = "Enterhaken", Weapon, 3;
+    Destruct = "Selbstzerstörung", Weapon, 1;
     Shield = "Schild", Buff, 0;
     Turbo = "Turbo", Buff, 6;
     Mini = "Schrumpfpilz", Buff, 10;
@@ -203,7 +211,9 @@ kinds! {
     Oil = "oil"; Oilf = "oilf"; Sticky = "sticky"; Gl = "gl"; Saw = "saw"; Plasma = "plasma";
     Fw = "fw"; Spk = "spk"; Spider = "spider"; Mine = "mine"; Trap = "trap"; Nv = "nv";
     Seek = "seek"; Phase = "phase"; Cannon = "cannon"; Arty = "arty"; Orbit = "orbit";
-    Meteor = "meteor"; Gold = "gold";
+    Meteor = "meteor"; Gold = "gold"; Split = "split"; Wave = "wave"; Timebomb = "timebomb";
+    Napalm = "napalm"; Burn = "burn"; Fence = "fence"; Sprinkler = "sprinkler"; Spb = "spb";
+    Hook = "hook"; Destruct = "destruct";
     // nur Trefferursachen
     Laser = "laser"; Zap = "zap"; Rail = "rail"; Prism = "prism"; Ram = "ram";
     Star = "star"; Giant = "giant"; Potato = "potato";
@@ -217,7 +227,7 @@ impl Kind {
     /// Abpraller zählen für Trickshots
     pub fn trick(self) -> bool {
         use Kind::*;
-        matches!(self, B | Bnc | Mg | Sg | Laser | Saw | Cannon | Gold | Nv | Prism)
+        matches!(self, B | Bnc | Mg | Sg | Laser | Saw | Cannon | Gold | Nv | Prism | Split | Wave)
     }
 
     /// Snapshot enthält den Flugwinkel
@@ -234,13 +244,31 @@ impl Kind {
     /// zünden keine Minen, Bots weichen ihnen nicht aus
     pub fn is_static(self) -> bool {
         use Kind::*;
-        matches!(self, Mine | Strike | Hole | Nuke | Sentry | Oil | Oilf | Trap | Arty | Orbit | Meteor | Gl)
+        matches!(
+            self,
+            Mine | Strike
+                | Hole
+                | Nuke
+                | Sentry
+                | Oil
+                | Oilf
+                | Trap
+                | Arty
+                | Orbit
+                | Meteor
+                | Gl
+                | Timebomb
+                | Burn
+                | Fence
+                | Sprinkler
+                | Destruct
+        )
     }
 
     /// Kugeln, die ein Spiegelschild zurückwirft
     pub fn reflect(self) -> bool {
         use Kind::*;
-        matches!(self, B | Mg | Sg | Frg | Bnc | Nv | Sb | Spk | Seek | Ice | Mrk | Rc)
+        matches!(self, B | Mg | Sg | Frg | Bnc | Nv | Sb | Spk | Seek | Ice | Mrk | Rc | Split | Wave | Spb)
     }
 
     /// Explosionsradius der Geschosse, die beim Treffer oder am Ende hochgehen
@@ -253,6 +281,8 @@ impl Kind {
             Kind::Gl => GL_BLAST,
             Kind::Arty => ARTY_BLAST,
             Kind::Meteor => METEOR_BLAST,
+            Kind::Timebomb => TIMEBOMB_BLAST,
+            Kind::Destruct => DESTRUCT_BLAST,
             _ => return None,
         })
     }
@@ -293,6 +323,14 @@ impl Kind {
             Orbit => Item::Orbit,
             Meteor => Item::Meteor,
             Gold => Item::Gold,
+            Split => Item::Split,
+            Wave => Item::Wave,
+            Timebomb => Item::Timebomb,
+            Napalm | Burn => Item::Napalm,
+            Fence => Item::Fence,
+            Sprinkler | Spb => Item::Sprinkler,
+            Hook => Item::Hook,
+            Destruct => Item::Destruct,
             Laser => Item::Laser,
             Zap => Item::Zap,
             Rail => Item::Rail,

@@ -5,7 +5,7 @@ use std::f32::consts::{FRAC_PI_2, PI, TAU};
 use macroquad::prelude::*;
 use panzer_core::consts::*;
 use panzer_core::items::{Eff, Item, Kind};
-use panzer_core::physics::{ahead, bullet_params, rail_path, strike_target, tank_scale};
+use panzer_core::physics::{ahead, bullet_params, fence_ends, first_wall, rail_path, strike_target, tank_scale};
 use panzer_core::rng::Rng;
 use panzer_core::snap::{FxData, TankView, View};
 use panzer_core::Arena;
@@ -245,7 +245,39 @@ impl Renderer {
                     }
                 }
                 Kind::Nuke => self.draw_nuke(g, sid, x, y, age, t),
-                Kind::Nv | Kind::Sb | Kind::Spk => {
+                Kind::Split => {
+                    g.light([255, 150, 60], x, y, 18.0, 4.0);
+                    self.ball(g, sid, x, y, 4.0, [255, 140, 50], true);
+                }
+                Kind::Wave => {
+                    self.trail(g, sid, [90, 240, 190], 9.0, 8.0);
+                    g.light([70, 230, 180], x, y, 20.0, 5.0);
+                    draw_circle(x, y, 5.0, col(DARKC));
+                    draw_circle(x, y, 4.0, col([150, 255, 215]));
+                }
+                Kind::Napalm => {
+                    self.trail(g, sid, [255, 130, 40], 10.0, 5.0);
+                    g.light([255, 120, 30], x, y, 26.0, 6.0);
+                    draw_circle(x, y, 6.0, col(DARKC));
+                    draw_circle(x, y, 5.0, col([235, 90, 25]));
+                    draw_circle(x - 1.5, y - 1.5, 2.0, col([255, 220, 150]));
+                }
+                Kind::Timebomb => self.draw_timebomb(g, x, y, age, life),
+                Kind::Burn => self.draw_burn(g, x, y, age, life),
+                Kind::Fence => self.draw_fence(g, arena, x, y, ang, owner, age, life, t),
+                Kind::Sprinkler => self.draw_sprinkler(g, x, y, owner, age, ang, t),
+                Kind::Hook => {
+                    if let Some(tk) = view.tank(owner) {
+                        let (ox, oy) = (tk.x as f32, tk.y as f32);
+                        draw_line(ox, oy, x, y, 3.0, col(DARKC));
+                        draw_line(ox, oy, x, y, 1.5, col([176, 150, 110]));
+                    }
+                    draw_circle(x, y, 5.0, col(DARKC));
+                    draw_circle(x, y, 4.0, col([170, 176, 190]));
+                    draw_circle(x, y, 1.5, col(c));
+                }
+                Kind::Destruct => self.draw_destruct(g, x, y, age, life),
+                Kind::Nv | Kind::Sb | Kind::Spk | Kind::Spb => {
                     let cc = if p.kind == Kind::Spk { FW_COLORS[sid as usize % FW_COLORS.len()] } else { c };
                     self.ball(g, sid, x, y, if p.kind == Kind::Spk { 2.0 } else { 3.0 }, cc, true);
                 }
@@ -371,6 +403,91 @@ impl Renderer {
             g.light([255, 120, 30], x, y, OIL_R as f32 * 2.2, 7.0 * k);
             g.light([255, 220, 120], x, y, OIL_R as f32, 6.0 * k);
         }
+    }
+
+    /// Zeitbombe: tickt immer schneller, der Ring zeigt, wie weit sie reicht.
+    fn draw_timebomb(&self, g: &mut Gfx, x: f32, y: f32, age: f32, life: f32) {
+        let left = (life - age).max(0.0);
+        let rate = if left < 1.2 { 14.0 } else { 5.0 };
+        let blink = (age * rate) as i32 % 2 == 1;
+        g.shadow(x + 2.0, y + 3.0, 10.0, 1.0);
+        let icon = &g.spr.icons[&Item::Timebomb];
+        g.sprite(icon, x, y, 0.0, 1.0, WHITE);
+        draw_circle_lines(x, y, TIMEBOMB_BLAST as f32, 1.0, cola([255, 90, 70], if blink { 0.6 } else { 0.25 }));
+        if blink {
+            g.light([255, 60, 40], x, y, 26.0, 6.0);
+        }
+        g.text(&format!("{}", left.ceil() as i32), x, y - 22.0, 15.0, col(TEXT_C), 0.5);
+    }
+
+    /// Napalm: brennende Fläche, das Feuer selbst kommt als Partikel aus events.rs.
+    fn draw_burn(&self, g: &mut Gfx, x: f32, y: f32, age: f32, life: f32) {
+        let k = (age / 0.3).min((life - age) / 0.6).min(1.0);
+        if k <= 0.0 {
+            return;
+        }
+        let r = NAPALM_R as f32;
+        g.puff(x, y, r, [34, 16, 8], 0.75 * k);
+        draw_circle_lines(x, y, r, 1.5, cola([255, 140, 60], 0.5 * k));
+        g.light([255, 110, 30], x, y, r * 1.7, 7.0 * k);
+        g.light([255, 215, 120], x, y, r * 0.8, 5.0 * k);
+    }
+
+    /// Laserschranke: blinkt, bis sie scharf ist, und kurz bevor sie ausgeht.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_fence(
+        &self,
+        g: &mut Gfx,
+        arena: &Arena,
+        x: f32,
+        y: f32,
+        ang: f32,
+        owner: usize,
+        age: f32,
+        life: f32,
+        t: f32,
+    ) {
+        let ((x0, y0), (x1, y1)) = fence_ends(arena, x as f64, y as f64, ang as f64);
+        let (x0, y0, x1, y1) = (x0 as f32, y0 as f32, x1 as f32, y1 as f32);
+        for (px, py) in [(x0, y0), (x1, y1)] {
+            draw_circle(px, py, 5.0, col(DARKC));
+            draw_circle(px, py, 3.0, col(COLORS[owner]));
+        }
+        let armed = age > FENCE_ARM as f32;
+        if !armed {
+            if (t * 10.0) as i32 % 2 == 0 {
+                draw_line(x0, y0, x1, y1, 1.0, cola([255, 90, 90], 0.6));
+            }
+            return;
+        }
+        if life - age < 1.0 && (t * 12.0) as i32 % 2 == 1 {
+            return;
+        }
+        g.lit_line(col([255, 50, 50]), x0, y0, x1, y1, 4.0);
+        draw_line(x0, y0, x1, y1, 2.0, col([255, 215, 215]));
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn draw_sprinkler(&self, g: &mut Gfx, x: f32, y: f32, owner: usize, age: f32, ang: f32, t: f32) {
+        let z = ease_back((age / 0.4).min(1.0));
+        g.shadow(x + 3.0, y + 4.0, 12.0, 1.0);
+        draw_circle(x, y, (11.0 * z).max(1.0), col(DARKC));
+        draw_circle(x, y, (10.0 * z).max(1.0), col([66, 70, 84]));
+        for side in [0.0, PI] {
+            let end = (x + (ang + side).cos() * 15.0 * z, y + (ang + side).sin() * 15.0 * z);
+            draw_line(x, y, end.0, end.1, 6.0, col(DARKC));
+            draw_line(x, y, end.0, end.1, 3.0, col([150, 156, 172]));
+        }
+        draw_circle(x, y, (5.0 * z).max(1.0), col(COLORS[owner]));
+        g.light([255, 190, 90], x, y, 10.0, 3.0 + 2.0 * (t * 20.0).sin());
+    }
+
+    /// Selbstzerstörung: rotes Pulsieren am Panzer, der Ring zeigt die Reichweite.
+    fn draw_destruct(&self, g: &mut Gfx, x: f32, y: f32, age: f32, life: f32) {
+        let k = (age / life).clamp(0.0, 1.0);
+        let blink = (age * (6.0 + 20.0 * k)) as i32 % 2 == 1;
+        g.light([255, 40, 30], x, y, 30.0 + 60.0 * k, if blink { 8.0 } else { 4.0 });
+        draw_circle_lines(x, y, DESTRUCT_BLAST as f32, 2.0, cola([255, 70, 60], 0.3 + 0.5 * k));
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -916,6 +1033,16 @@ impl Renderer {
                 arc(x, y, PUSH_RANGE as f32, a - PUSH_CONE as f32, a + PUSH_CONE as f32, 1.0, col([150, 200, 255]))
             }
             Item::Phase => dotted(&[(x, y), (x + a.cos() * 300.0, y + a.sin() * 300.0)], col([80, 220, 255])),
+            Item::Fence => {
+                let ((x0, y0), (x1, y1)) = fence_ends(arena, xd, yd, ad + std::f64::consts::FRAC_PI_2);
+                dotted(&[(x0 as f32, y0 as f32), (x1 as f32, y1 as f32)], red);
+            }
+            Item::Hook => {
+                let d = first_wall(arena, xd, yd, ad, HOOK_SPEED * HOOK_LIFE) as f32;
+                dotted(&[(x, y), (x + a.cos() * d, y + a.sin() * d)], col([176, 150, 110]));
+            }
+            Item::Timebomb => draw_circle_lines(x, y, TIMEBOMB_BLAST as f32, 1.0, red),
+            Item::Destruct => draw_circle_lines(x, y, DESTRUCT_BLAST as f32, 1.0, red),
             _ => {}
         }
     }

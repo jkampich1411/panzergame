@@ -18,20 +18,20 @@ use crate::sprites::{box_color, FW_COLORS, PRISM_COLORS};
 fn shot_sound(k: Kind) -> Option<&'static str> {
     use Kind::*;
     Some(match k {
-        B | Seek | Gold => "shot",
-        Mg | Sb => "mg",
+        B | Seek | Gold | Split | Wave => "shot",
+        Mg | Sb | Spb => "mg",
         Sg | Nv => "sg",
         Rocket | Rc | Mrk | Fw => "rocket",
-        Frag | Nuke | Gl => "frag",
+        Frag | Nuke | Gl | Napalm => "frag",
         Bnc | Sticky => "bnc",
-        Rang => "rang",
+        Rang | Hook => "rang",
         Swap | Phase => "tele",
         Ice => "ice",
         Hole => "hole",
-        Mine | Spider | Trap => "mine",
+        Mine | Spider | Trap | Destruct => "mine",
         Strike | Arty => "strike",
-        Fl => "flame",
-        Sentry | Oil => "drop",
+        Fl | Burn => "flame",
+        Sentry | Oil | Timebomb | Fence | Sprinkler => "drop",
         Saw => "saw",
         Plasma => "plasma",
         Cannon => "cannon",
@@ -42,7 +42,7 @@ fn shot_sound(k: Kind) -> Option<&'static str> {
 
 /// Geschosse, die nicht aus dem Rohr kommen (kein Mündungsfeuer)
 fn no_muzzle(k: Kind) -> bool {
-    k.is_static() || matches!(k, Kind::Frg | Kind::Spk | Kind::Sb | Kind::Spider | Kind::Trap | Kind::Oil)
+    k.is_static() || matches!(k, Kind::Frg | Kind::Spk | Kind::Sb | Kind::Spb | Kind::Spider | Kind::Trap | Kind::Oil)
 }
 
 /// Funken hinter fliegenden Geschossen: (pro Sekunde, Partikel, Farbe oder bunt, Tempo, Leben)
@@ -53,6 +53,7 @@ fn sparkle(k: Kind) -> Option<(f32, P, Option<[u8; 3]>, f32, f32)> {
         Kind::Gold => (30.0, P::Star, Some([255, 210, 80]), 15.0, 0.5),
         Kind::Phase => (25.0, P::Star, Some([120, 230, 255]), 0.0, 0.4),
         Kind::Fw => (40.0, P::Star, None, 20.0, 0.4),
+        Kind::Napalm => (30.0, P::Spark, Some([255, 140, 50]), 60.0, 0.2),
         _ => return None,
     })
 }
@@ -60,7 +61,10 @@ fn sparkle(k: Kind) -> Option<(f32, P, Option<[u8; 3]>, f32, f32)> {
 /// Geschossarten, an denen man Abpraller sieht und hört
 fn bounce_fx(k: Kind) -> bool {
     use Kind::*;
-    matches!(k, B | Mg | Sg | Bnc | Frag | Ice | Swap | Saw | Cannon | Gold | Nv | Sb | Seek | Mrk | Spk)
+    matches!(
+        k,
+        B | Mg | Sg | Bnc | Frag | Ice | Swap | Saw | Cannon | Gold | Nv | Sb | Seek | Mrk | Spk | Split | Wave | Spb
+    )
 }
 
 pub fn light_r(r: f32) -> usize {
@@ -758,9 +762,10 @@ impl Renderer {
                 continue;
             }
             match p.kind {
-                Kind::Oilf => {
-                    if self.chance(60.0 * vdt) {
-                        let (b, d) = (self.parts.u(0.0, TAU), self.parts.u(0.0, OIL_R as f32 * 0.9));
+                Kind::Oilf | Kind::Burn => {
+                    let (r, rate) = if p.kind == Kind::Burn { (NAPALM_R as f32, 160.0) } else { (OIL_R as f32, 60.0) };
+                    if self.chance(rate * vdt) {
+                        let (b, d) = (self.parts.u(0.0, TAU), self.parts.u(0.0, r * 0.9));
                         let (vx, vy) = (self.parts.u(-10.0, 10.0), self.parts.u(-40.0, -10.0));
                         self.parts.add(
                             P::Fire,

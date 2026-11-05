@@ -98,7 +98,7 @@ impl Game {
             let ang = match s.kind {
                 k if k.angled() => s.heading(),
                 Kind::Spider => s.heading(),
-                Kind::Sentry | Kind::Orbit => s.ang,
+                Kind::Sentry | Kind::Orbit | Kind::Fence | Kind::Sprinkler => s.ang,
                 _ => 0.0,
             };
             shots.push(NetShot {

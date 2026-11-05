@@ -2,9 +2,10 @@
 
 use super::{Game, Win};
 use crate::consts::*;
+use crate::geom::seg_dist;
 use crate::geom::{angle_diff, circle_hits_walls, hypot};
 use crate::items::{Eff, Item, Kind};
-use crate::physics::{ahead, clamp_arena};
+use crate::physics::{ahead, clamp_arena, fence_ends, first_wall};
 use crate::snap::{qp, FxData};
 
 /// Rangfolge beim Zusammenstoß: Superstern > Rammbock > Riesenpilz > normal.
@@ -111,6 +112,12 @@ impl Game {
             if self.temp.iter().any(|w| w.left <= 0.0) {
                 self.temp.retain(|w| w.left > 0.0);
                 self.rebuild_walls();
+                // Wer zwischen gebauter und fester Wand eingeklemmt war, kommt jetzt frei
+                for ti in 0..self.tanks.len() {
+                    if self.tanks[ti].alive {
+                        self.settle_in_place(ti);
+                    }
+                }
             }
         }
 
@@ -167,9 +174,25 @@ impl Game {
                     self.trap_check(si);
                     continue;
                 }
-                Kind::Strike | Kind::Arty | Kind::Meteor => continue,
-                Kind::Oil | Kind::Oilf => {
+                Kind::Strike | Kind::Arty | Kind::Meteor | Kind::Timebomb => continue,
+                Kind::Oil | Kind::Oilf | Kind::Burn => {
                     self.oil(si);
+                    continue;
+                }
+                Kind::Fence => {
+                    self.fence(si);
+                    continue;
+                }
+                Kind::Sprinkler => {
+                    self.sprinkler(si, gdt);
+                    continue;
+                }
+                Kind::Destruct => {
+                    self.stick(si);
+                    continue;
+                }
+                Kind::Hook if self.shots[si].stuck.is_some() => {
+                    self.hook_pull(si, gdt);
                     continue;
                 }
                 Kind::Sentry => {
@@ -276,6 +299,13 @@ impl Game {
                 s.vy = a.sin() * s.speed;
             }
             Kind::Rang => self.rang_steer(si, dt),
+            Kind::Wave => {
+                // Schlangenlinie: der Kurs pendelt um die Schussrichtung
+                let s = &mut self.shots[si];
+                let a = s.heading() + WAVE_SWING * (age * WAVE_FREQ).cos() * dt;
+                s.vx = a.cos() * s.speed;
+                s.vy = a.sin() * s.speed;
+            }
             Kind::Fl | Kind::Nuke => {
                 // Flammen und die rollende Bombe werden langsamer
                 let drag = if k == Kind::Fl { FLAME_DRAG } else { NUKE_DRAG };
@@ -318,6 +348,28 @@ impl Game {
                     self.burst(si);
                     return true;
                 }
+                Kind::Napalm => {
+                    // Kurs zeigt nach dem Abprallen von der Wand weg: dorthin rücken,
+                    // sonst brennt die halbe Fläche in der Wand
+                    let s = &self.shots[si];
+                    let (x, y, a) = (s.x, s.y, s.heading());
+                    let d = (first_wall(&self.arena, x, y, a, NAPALM_R * 0.6) - 8.0).max(0.0);
+                    self.shots[si].x = x + a.cos() * d;
+                    self.shots[si].y = y + a.sin() * d;
+                    self.napalm(si);
+                    return true;
+                }
+                Kind::Hook => {
+                    // hakt sich in die Wand: zieht den Schützen hin
+                    let s = &mut self.shots[si];
+                    s.stuck = Some(-1);
+                    s.vx = 0.0;
+                    s.vy = 0.0;
+                    s.speed = 0.0;
+                    s.life = s.age + HOOK_HOLD;
+                    return true;
+                }
+                Kind::Split => self.split(si),
                 _ => {
                     let max = match k {
                         Kind::Saw => SAW_BOUNCES,
@@ -517,6 +569,21 @@ impl Game {
             self.burst(si);
             return;
         }
+        if k == Kind::Napalm {
+            self.napalm(si);
+            return;
+        }
+        if k == Kind::Hook {
+            // zieht den Getroffenen zum Schützen, kurz kann er nichts machen
+            let s = &mut self.shots[si];
+            s.stuck = Some(tslot as i8);
+            s.vx = 0.0;
+            s.vy = 0.0;
+            s.speed = 0.0;
+            s.life = s.age + HOOK_HOLD;
+            self.freeze(ti, HOOK_STUN);
+            return;
+        }
         self.shots[si].dead = true;
         match k {
             Kind::Rang if tslot == self.shots[si].owner => {
@@ -547,6 +614,7 @@ impl Game {
             Kind::Frag => return self.explode(si),
             Kind::Nuke => return self.nuke(si),
             Kind::Fw => return self.burst(si),
+            Kind::Napalm => return self.napalm(si),
             Kind::Spider => {
                 // zerfällt nach einer Weile harmlos
                 self.shots[si].dead = true;
@@ -556,7 +624,11 @@ impl Game {
             _ => {}
         }
         if k.blast().is_some() {
-            let size = if matches!(k, Kind::Arty | Kind::Meteor) { 1.0 } else { 0.8 };
+            let size = match k {
+                Kind::Timebomb | Kind::Destruct => 1.4,
+                Kind::Arty | Kind::Meteor => 1.0,
+                _ => 0.8,
+            };
             return self.boom_shot(si, size);
         }
         if k == Kind::Sentry {
@@ -575,22 +647,28 @@ impl Game {
     }
 
     /// Öl macht rutschig. Kommt Feuer dran, brennt es und erwischt jeden darin.
+    /// Napalm brennt von Anfang an und kommt nicht durch Wände.
     fn oil(&mut self, si: usize) {
         let (sx, sy, owner) = (self.shots[si].x, self.shots[si].y, self.shots[si].owner);
-        let burning = self.shots[si].kind == Kind::Oilf;
+        let kind = self.shots[si].kind;
+        let burning = kind != Kind::Oil;
         if !burning && self.shots.iter().any(|o| o.kind == Kind::Fl && hypot(o.x - sx, o.y - sy) < OIL_R) {
             self.ignite(si);
             return;
         }
+        let (how, reach) = if kind == Kind::Burn { (Kind::Burn, NAPALM_R) } else { (Kind::Oil, OIL_R) };
         for ti in 0..self.tanks.len() {
             let t = &self.tanks[ti];
             if !t.alive {
                 continue;
             }
-            if hypot(t.x - sx, t.y - sy) < OIL_R + t.radius() * 0.5 {
+            if hypot(t.x - sx, t.y - sy) < reach + t.radius() * 0.5 {
+                if kind == Kind::Burn && !self.arena.clear(sx, sy, t.x, t.y) {
+                    continue;
+                }
                 if burning {
                     let a = (t.y - sy).atan2(t.x - sx);
-                    self.hit(ti, Some(owner), Kind::Oil, false, Some(a), 0);
+                    self.hit(ti, Some(owner), how, false, Some(a), 0);
                 } else {
                     self.tanks[ti].eff.set(Eff::Slip, 0.25);
                 }
@@ -679,6 +757,73 @@ impl Game {
                 Kind::Oil => self.ignite(oi),
                 _ => {}
             }
+        }
+    }
+
+    /// Laserschranke: nach kurzer Zeit tödlich für jeden, der den Strahl berührt.
+    fn fence(&mut self, si: usize) {
+        if self.shots[si].age < FENCE_ARM {
+            return;
+        }
+        let (sx, sy, a, owner) = (self.shots[si].x, self.shots[si].y, self.shots[si].ang, self.shots[si].owner);
+        let ((x0, y0), (x1, y1)) = fence_ends(&self.arena, sx, sy, a);
+        for ti in 0..self.tanks.len() {
+            let t = &self.tanks[ti];
+            if t.alive && seg_dist(t.x, t.y, x0, y0, x1, y1) < t.radius() {
+                self.hit(ti, Some(owner), Kind::Fence, false, Some(a), 0);
+            }
+        }
+    }
+
+    /// Kugelsprinkler: dreht sich und schießt in zwei entgegengesetzte Richtungen.
+    fn sprinkler(&mut self, si: usize, dt: f64) {
+        let s = &mut self.shots[si];
+        s.ang += SPRINKLER_TURN * dt;
+        s.cool -= dt;
+        if s.cool > 0.0 {
+            return;
+        }
+        s.cool = SPRINKLER_RATE;
+        let (x, y, owner, a) = (s.x, s.y, s.owner, s.ang);
+        for off in [0.0, std::f64::consts::PI] {
+            self.spawn(Kind::Spb, owner, x, y, a + off, SPRINKLER_SPEED, 3.0, SPRINKLER_LIFE, 0.5, SENTRY_R + 4.0);
+        }
+    }
+
+    /// Enterhaken: an der Wand zieht er den Schützen hin, an einem Panzer den Panzer her.
+    fn hook_pull(&mut self, si: usize, dt: f64) {
+        let owner = self.tank_index(self.shots[si].owner).filter(|&i| self.tanks[i].alive);
+        let Some(oi) = owner else {
+            self.shots[si].dead = true;
+            return;
+        };
+        let (mover, tx, ty, stop) = match self.shots[si].stuck {
+            Some(slot) if slot >= 0 => {
+                let Some(vi) = self.tank_index(slot as usize).filter(|&i| self.tanks[i].alive) else {
+                    self.shots[si].dead = true;
+                    return;
+                };
+                (vi, self.tanks[oi].x, self.tanks[oi].y, self.tank_r(oi) + self.tank_r(vi) + 4.0)
+            }
+            _ => (oi, self.shots[si].x, self.shots[si].y, self.tank_r(oi) + 8.0),
+        };
+        let (mx, my) = (self.tanks[mover].x, self.tanks[mover].y);
+        let d = hypot(tx - mx, ty - my);
+        let step = (HOOK_PULL * dt).min(d - stop);
+        if step <= 0.0 {
+            self.shots[si].dead = true; // angekommen
+            return;
+        }
+        let (nx, ny) = self.settle(mover, mx + (tx - mx) / d * step, my + (ty - my) / d * step);
+        if hypot(nx - mx, ny - my) < step * 0.25 {
+            self.shots[si].dead = true; // hängt an einer Ecke fest
+            return;
+        }
+        self.tanks[mover].x = nx;
+        self.tanks[mover].y = ny;
+        if mover != oi {
+            self.shots[si].x = nx;
+            self.shots[si].y = ny;
         }
     }
 

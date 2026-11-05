@@ -25,6 +25,8 @@ struct TestClient {
     reasm: Reassembly,
     seq: u32,
     chat: Vec<String>,
+    /// Sonderregel jedes empfangenen Labyrinths
+    mutators: Vec<Option<Mutator>>,
     kicked: Option<String>,
     bytes: usize,
     packets: usize,
@@ -57,6 +59,7 @@ impl TestClient {
                             reasm: Reassembly::default(),
                             seq: 0,
                             chat: Vec::new(),
+                            mutators: Vec::new(),
                             kicked: None,
                             bytes: 0,
                             packets: 0,
@@ -117,8 +120,10 @@ impl TestClient {
         self.rel_out.ack(head.rel_ack);
         for (id, d) in head.rel {
             for m in self.rel_in.receive(id, d).unwrap() {
-                if let Ok(Msg::Chat { text, .. }) = Msg::decode(&m) {
-                    self.chat.push(text);
+                match Msg::decode(&m) {
+                    Ok(Msg::Chat { text, .. }) => self.chat.push(text),
+                    Ok(Msg::Maze(maze)) => self.mutators.push(maze.mutator),
+                    _ => {}
                 }
             }
         }
@@ -162,6 +167,35 @@ fn run(clients: &mut [&mut TestClient], ms: u64) {
         }
         std::thread::sleep(Duration::from_millis(16));
     }
+}
+
+/// Regel aus dem Menü: Der Host stellt sie ein, die Clients bekommen sie mit dem Labyrinth.
+#[test]
+fn regel_kommt_ueber_den_server() {
+    let cfg = Config {
+        port: 0,
+        bots: 1,
+        rule: RoundRule::Only(Mutator::Kisten),
+        bans_file: None,
+        verbose: false,
+        ..Default::default()
+    };
+    let mut server = Server::bind(cfg).unwrap();
+    let port = server.local_port();
+    let stop = Arc::new(AtomicBool::new(false));
+    let flag = stop.clone();
+    let th = std::thread::spawn(move || server.run(&flag));
+
+    let mut c = TestClient::connect(port, "Regel", 77, 0).unwrap();
+    let start = Instant::now();
+    while c.mutators.is_empty() && start.elapsed() < Duration::from_secs(5) {
+        c.pump(0, 1, 16);
+        std::thread::sleep(Duration::from_millis(16));
+    }
+    stop.store(true, Ordering::Relaxed);
+    th.join().unwrap();
+    assert!(!c.mutators.is_empty(), "kein Labyrinth empfangen");
+    assert!(c.mutators.iter().all(|&m| m == Some(Mutator::Kisten)), "{:?}", c.mutators);
 }
 
 #[test]

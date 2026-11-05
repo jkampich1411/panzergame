@@ -4,7 +4,7 @@ use std::f64::consts::PI;
 
 pub const PORT: u16 = 5555;
 /// Protokollversion, Server und Client müssen übereinstimmen
-pub const PROTO: u16 = 8;
+pub const PROTO: u16 = 9;
 pub const MAX_PLAYERS: usize = 8;
 /// mehr passen nicht sinnvoll auf eine Tastatur
 pub const MAX_LOCAL: usize = 4;
@@ -195,6 +195,38 @@ pub const METEOR_N: usize = 9;
 pub const METEOR_BLAST: f64 = 42.0;
 pub const GOLD_SPEED: f64 = 330.0;
 pub const GOLD_LIFE: f64 = 6.0;
+pub const SPLIT_SPEED: f64 = 250.0;
+pub const SPLIT_LIFE: f64 = 5.0;
+/// so oft teilt sich ein Querschläger (3 = höchstens 8 Kugeln)
+pub const SPLIT_GENS: u8 = 3;
+pub const SPLIT_ANGLE: f64 = 0.3;
+pub const WAVE_SPEED: f64 = 240.0;
+pub const WAVE_LIFE: f64 = 5.0;
+pub const WAVE_FREQ: f64 = 9.0;
+pub const WAVE_SWING: f64 = 5.5;
+pub const TIMEBOMB_FUSE: f64 = 3.5;
+pub const TIMEBOMB_BLAST: f64 = 95.0;
+pub const NAPALM_SPEED: f64 = 270.0;
+pub const NAPALM_FUSE: f64 = 1.3;
+pub const NAPALM_R: f64 = 62.0;
+pub const NAPALM_BURN: f64 = 4.5;
+pub const FENCE_ARM: f64 = 0.8;
+pub const FENCE_TIME: f64 = 6.0;
+/// reicht in jede Richtung bis zur nächsten Wand, höchstens so weit
+pub const FENCE_LEN: f64 = 260.0;
+pub const SPRINKLER_ARM: f64 = 0.6;
+pub const SPRINKLER_TIME: f64 = 3.2;
+pub const SPRINKLER_RATE: f64 = 0.14;
+pub const SPRINKLER_TURN: f64 = 3.2;
+pub const SPRINKLER_SPEED: f64 = 230.0;
+pub const SPRINKLER_LIFE: f64 = 2.0;
+pub const HOOK_SPEED: f64 = 560.0;
+pub const HOOK_LIFE: f64 = 0.9;
+pub const HOOK_PULL: f64 = 520.0;
+pub const HOOK_HOLD: f64 = 1.2;
+pub const HOOK_STUN: f64 = 1.4;
+pub const DESTRUCT_FUSE: f64 = 1.2;
+pub const DESTRUCT_BLAST: f64 = 120.0;
 pub const GIANT_SCALE: f64 = 1.5;
 pub const TURBO_SPEED: f64 = 1.65;
 pub const MINI_SCALE: f64 = 0.55;
@@ -302,6 +334,69 @@ impl Mutator {
             Mutator::Nebel => "man sieht nur, was direkt vor einem liegt",
             Mutator::Sniper => "nur 1 Kugel, aber pfeilschnell",
             Mutator::Dunkel => "Licht gibt es nur von Scheinwerfern und Feuer",
+        }
+    }
+
+    /// Kurzname für die gespeicherten Einstellungen (bleibt stabil, auch wenn sich Texte ändern)
+    pub fn key(self) -> &'static str {
+        match self {
+            Mutator::Kisten => "kisten",
+            Mutator::Hyper => "hyper",
+            Mutator::Riesen => "riesen",
+            Mutator::Turbo => "turbo",
+            Mutator::Nebel => "nebel",
+            Mutator::Sniper => "sniper",
+            Mutator::Dunkel => "dunkel",
+        }
+    }
+}
+
+/// Welche Sonderregeln ein Spiel benutzt
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum RoundRule {
+    /// manche Runden bekommen eine zufällige Sonderregel
+    #[default]
+    Random,
+    /// nie eine Sonderregel
+    Off,
+    /// jede Runde dieselbe
+    Only(Mutator),
+}
+
+impl RoundRule {
+    /// Alle Möglichkeiten in der Reihenfolge der Menü-Auswahl
+    pub fn all() -> Vec<RoundRule> {
+        let mut v = vec![RoundRule::Random, RoundRule::Off];
+        v.extend(MUTATORS.iter().map(|&m| RoundRule::Only(m)));
+        v
+    }
+
+    pub fn key(self) -> &'static str {
+        match self {
+            RoundRule::Random => "zufall",
+            RoundRule::Off => "keine",
+            RoundRule::Only(m) => m.key(),
+        }
+    }
+
+    /// Unbekannte Werte (z. B. aus einer neueren Version) ergeben die Standard-Regel
+    pub fn from_key(key: &str) -> RoundRule {
+        RoundRule::all().into_iter().find(|r| r.key() == key).unwrap_or_default()
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            RoundRule::Random => "Zufall",
+            RoundRule::Off => "Keine",
+            RoundRule::Only(m) => m.name(),
+        }
+    }
+
+    pub fn desc(self) -> &'static str {
+        match self {
+            RoundRule::Random => "manche Runden bekommen eine zufällige Sonderregel",
+            RoundRule::Off => "immer normale Runden, ohne Sonderregel",
+            RoundRule::Only(m) => m.desc(),
         }
     }
 }

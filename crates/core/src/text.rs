@@ -48,6 +48,13 @@ fn kill_template(how: Kind) -> &'static str {
         Prism => "{k} hat {v} durchs Prisma erwischt",
         Meteor => "{v} wurde von einem Meteoriten getroffen",
         Gold => "{k} hat {v} vergoldet",
+        Split => "{k}s Querschläger hat {v} erwischt",
+        Wave => "{k}s Schlangenkugel hat {v} erwischt",
+        Timebomb => "{k}s Zeitbombe hat {v} erwischt",
+        Napalm | Burn => "{k} hat {v} mit Napalm angezündet",
+        Fence => "{v} ist in {k}s Laserschranke gefahren",
+        Spb | Sprinkler => "{k}s Kugelsprinkler hat {v} erwischt",
+        Destruct => "{k} hat {v} mit in die Luft gerissen",
         _ => "{k} hat {v} abgeschossen",
     }
 }
@@ -73,6 +80,13 @@ fn self_template(how: Kind) -> Option<&'static str> {
         Orbit => "{v} hat den Orbitallaser auf sich selbst gerichtet",
         Meteor => "{v} wurde von einem Meteoriten getroffen",
         Seek => "{v} wurde von der eigenen Suchkugel gefunden",
+        Split => "{v} wurde vom eigenen Querschläger erwischt",
+        Wave => "{v} wurde von der eigenen Schlangenkugel erwischt",
+        Timebomb => "{v} hat die Zeitbombe unterschätzt",
+        Napalm | Burn => "{v} ist im eigenen Napalm verbrannt",
+        Fence => "{v} ist in die eigene Laserschranke gefahren",
+        Spb | Sprinkler => "{v} stand im eigenen Kugelsprinkler",
+        Destruct => "{v} hat sich selbst gesprengt",
         _ => return None,
     })
 }

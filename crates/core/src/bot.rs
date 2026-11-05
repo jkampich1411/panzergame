@@ -9,13 +9,15 @@ use crate::consts::*;
 use crate::game::{Game, Tank};
 use crate::geom::{angle_diff, hypot, seg_dist};
 use crate::items::{Eff, Item, Kind};
-use crate::physics::{first_wall, rail_path, strike_target, tank_radius};
+use crate::physics::{fence_ends, first_wall, rail_path, strike_target, tank_radius};
 use crate::rng::Rng;
 
 /// so oft planen Bots neu (Ziel, Weg, Zielwinkel)
 const BOT_PLAN: f64 = 0.3;
 /// so viele Winkel probiert ein Bot für einen Bandenschuss
 const BOT_RAYS: usize = 18;
+/// so lange darf eine Waffe ungenutzt bleiben, dann wird sie auf gut Glück eingesetzt
+const HOARD_TIME: f64 = 9.0;
 /// "Hehe!", "Zu langsam!", "Komm her!"
 const BOT_TAUNTS: [u8; 3] = [1, 4, 5];
 
@@ -25,14 +27,17 @@ fn bank_shot(w: Option<Item>) -> bool {
     match w {
         None => true,
         Some(w) => {
-            matches!(w, Frag | Laser | Bouncy | Swap | Rang | Ice | Hole | Saw | Cannon | Gold | Sticky | Fw | Seek)
+            matches!(
+                w,
+                Frag | Laser | Bouncy | Swap | Rang | Ice | Hole | Saw | Cannon | Gold | Sticky | Fw | Seek | Split
+            )
         }
     }
 }
 
 /// legen Bots ab und zu hinter sich
 fn is_drop(w: Item) -> bool {
-    matches!(w, Item::Mine | Item::Trap | Item::Oil | Item::Spider | Item::Wall)
+    matches!(w, Item::Mine | Item::Trap | Item::Oil | Item::Spider | Item::Wall | Item::Fence)
 }
 
 /// Waffe einsetzen, sobald ein Gegner so nah ist
@@ -42,6 +47,9 @@ fn bot_near(w: Item) -> Option<f64> {
         Item::Sentry => 420.0,
         Item::Frost => FROST_R,
         Item::Ram | Item::Nova => 260.0,
+        Item::Timebomb => 170.0,
+        Item::Sprinkler => 300.0,
+        Item::Destruct => DESTRUCT_BLAST,
         _ => return None,
     })
 }
@@ -82,6 +90,8 @@ pub struct Bot {
     lock: f64,
     /// Ergebnis der letzten Trefferprüfung
     ok: bool,
+    /// hat beschlossen, etwas abzulegen: gilt, bis es wirklich passiert ist
+    drop_now: bool,
     /// Pause zwischen zwei Schüssen
     cool: f64,
     /// Geschoss-id -> bemerkt? (Bots übersehen manchmal etwas)
@@ -117,6 +127,7 @@ impl Bot {
             aim: None,
             lock: 0.0,
             ok: false,
+            drop_now: false,
             cool: 0.0,
             noticed: HashMap::new(),
             stuck: 0.0,
@@ -146,6 +157,7 @@ impl Bot {
         self.aim = None;
         self.lock = 0.0;
         self.ok = false;
+        self.drop_now = false;
         self.cool = 0.0;
         self.noticed.clear();
         self.stuck = 0.0;
@@ -308,6 +320,20 @@ impl Bot {
                 Kind::Arty | Kind::Meteor => s.kind.blast().unwrap_or(40.0) + 30.0,
                 Kind::Orbit if s.age > ORBIT_DELAY - 0.8 => ORBIT_R + 70.0,
                 Kind::Oilf => OIL_R + 25.0,
+                Kind::Burn => NAPALM_R + 25.0,
+                Kind::Timebomb => TIMEBOMB_BLAST + 30.0,
+                Kind::Destruct if s.owner != self.slot => DESTRUCT_BLAST + 30.0,
+                Kind::Fence => {
+                    // die Schranke ist ein Strich: Gefahr ist die Stelle, die dem Bot am nächsten liegt
+                    let ((x0, y0), (x1, y1)) = fence_ends(&game.arena, s.x, s.y, s.ang);
+                    let (dx, dy) = (x1 - x0, y1 - y0);
+                    let k = (((t.x - x0) * dx + (t.y - y0) * dy) / (dx * dx + dy * dy).max(1.0)).clamp(0.0, 1.0);
+                    let (px, py) = (x0 + dx * k, y0 + dy * k);
+                    if hypot(px - t.x, py - t.y) < tank_radius(&t.eff) + 30.0 {
+                        return Some((px, py, 70.0));
+                    }
+                    continue;
+                }
                 Kind::Hole => HOLE_RANGE * 0.9,
                 Kind::Sticky if s.stuck.is_some() && s.stuck != Some(self.slot as i8) => STICKY_BLAST + 30.0,
                 Kind::Frag | Kind::Spider if s.owner != self.slot => 100.0,
@@ -518,7 +544,8 @@ impl Bot {
         self.held = if w.is_some() { self.held + TICK } else { 0.0 };
         match w {
             Some(Item::Mg) | Some(Item::Flame) => {
-                let reach = if w == Some(Item::Flame) { 130.0 } else { 420.0 };
+                // der Flammenwerfer reicht nicht weit: lieber verschwenden als ewig horten
+                let reach = if w == Some(Item::Flame) && self.held < HOARD_TIME { 130.0 } else { 420.0 };
                 return (false, facing(game, t, foes, reach, 0.22));
             }
             Some(Item::Rail) => {
@@ -547,7 +574,15 @@ impl Bot {
         self.lock = 0.0;
         self.cool = 0.2;
         self.ok = false;
+        self.drop_now = false;
         (true, false)
+    }
+
+    /// Zufällig etwas ablegen. Die Entscheidung bleibt bestehen: Eine Prüfung gilt nur
+    /// 3 Ticks, die Reaktionszeit dauert länger, sonst käme es nie dazu.
+    fn drop_roll(&mut self, chance: f64) -> bool {
+        self.drop_now = self.drop_now || self.rng.random() < chance;
+        self.drop_now
     }
 
     fn should_fire(&mut self, game: &Game, ti: usize, foes: &[usize], w: Option<Item>) -> bool {
@@ -556,6 +591,11 @@ impl Bot {
         let Some(w) = w else {
             return game.reload_state(ti).0 > 0 && lined_up(game, ti, 620.0);
         };
+        // Waffe nicht ewig horten: Wer eine trägt, kann keine andere aufheben. Bots halten
+        // im Duell rund 150 px Abstand, Nahkampfwaffen würden sonst nie ausgelöst.
+        if self.held > HOARD_TIME && facing(game, t, foes, 600.0, 0.6) {
+            return true;
+        }
         match w {
             Item::Laser => {
                 let alive: Vec<usize> = (0..game.tanks.len()).filter(|&i| game.tanks[i].alive).collect();
@@ -574,9 +614,11 @@ impl Bot {
                 hypot(x - t.x, y - t.y) > STRIKE_BLAST + 25.0
                     && foes.iter().any(|&o| hypot(game.tanks[o].x - x, game.tanks[o].y - y) < STRIKE_BLAST * 0.8)
             }
-            Item::Mine => self.rng.random() < 0.03,
+            Item::Mine => self.drop_roll(0.03),
             Item::Hole => facing(game, t, foes, 330.0, 0.3) && !facing(game, t, foes, 120.0, std::f64::consts::PI),
             Item::Shotgun => lined_up(game, ti, 240.0),
+            // nicht in die eigene Feuerfläche schießen
+            Item::Napalm => lined_up(game, ti, 420.0) && !facing(game, t, foes, 110.0, std::f64::consts::PI),
             _ if bot_near(w).is_some() => {
                 let near = bot_near(w).unwrap_or(0.0);
                 foes.iter().any(|&o| hypot(game.tanks[o].x - t.x, game.tanks[o].y - t.y) < near)
@@ -586,7 +628,7 @@ impl Bot {
                 aligned(game, t, foes, n, f, c)
             }
             _ if is_drop(w) => {
-                self.rng.random() < 0.01 || (w == Item::Wall && self.danger(game, t).is_some())
+                self.drop_roll(0.01) || (w == Item::Wall && self.danger(game, t).is_some())
                 // Deckung
             }
             Item::Push => {
@@ -600,9 +642,6 @@ impl Bot {
             Item::Prism => lined_up(game, ti, 600.0) || facing(game, t, foes, 450.0, 0.4),
             Item::Fw => lined_up(game, ti, 300.0),
             _ => {
-                if self.held > 9.0 && facing(game, t, foes, 600.0, 0.6) {
-                    return true; // Waffe nicht ewig horten
-                }
                 lined_up(game, ti, 560.0) // Splitterbombe, Flummi, Sägeblatt ...
             }
         }
