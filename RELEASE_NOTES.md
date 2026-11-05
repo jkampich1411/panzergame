@@ -1,10 +1,8 @@
-## Neu in 2.1
-- 8 neue Waffen: Querschläger, Schlangenkugel, Zeitbombe, Napalm, Laserschranke, Kugelsprinkler, Enterhaken und Selbstzerstörung
-- Im Menü lässt sich die Sonderregel wählen: Zufall, keine oder immer dieselbe, zum Beispiel nur Kistenregen
+## Behoben in 2.1.1
+- Der Server stürzte ab, wenn ein Spieler das Spiel verließ, während Bots mitspielten. Das betraf auch das Hosten im Spiel
 
-## Bots
-- Legen jetzt wirklich Minen und Wände
-- Bleiben mit Nahkampfwaffen nicht mehr untätig stehen
+## Server
+- Der dedizierte Server lässt sich selbst als Docker-Image bauen und über Umgebungsvariablen einstellen
 
 ## Wichtig
-- Alle Spieler brauchen diese Version, mit 2.0 kann man nicht mehr zusammen spielen
+- Mit 2.1.0 kann man weiter zusammen spielen, wer hostet oder einen Server betreibt, sollte aber aktualisieren
